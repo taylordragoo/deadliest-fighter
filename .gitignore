@@ -5,3 +5,7 @@
 
 *.*.import
 *.*.uid
+
+digest.txt
+llms.txt
+CLAUDE.md
