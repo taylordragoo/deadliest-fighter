@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="SoulsGameTemplate"
-run/main_scene="res://demo_level/world_castle.tscn"
+run/main_scene="res://fighter/fighter_demo.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.png"
 
