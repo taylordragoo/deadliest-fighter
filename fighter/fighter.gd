@@ -128,7 +128,7 @@ func _set_current_state(new_state: int) -> void:
 # Movement while locked on. Builds a desired horizontal velocity from
 # input_dir in a frame of reference defined by the opponent's direction:
 #   forward axis = unit vector from self to opponent (horizontal)
-#   right axis   = UP cross forward
+#   right axis   = forward cross UP
 # input_dir.y convention: up on the stick = negative Y (Godot default),
 # which we negate to get "approach the opponent" on W.
 func _strafing_movement(delta: float) -> void:
@@ -144,7 +144,7 @@ func _compute_strafe_velocity() -> Vector3:
 	if to_opp.length_squared() < 0.0001:
 		return Vector3.ZERO
 	var forward := to_opp.normalized()
-	var right := Vector3.UP.cross(forward).normalized()
+	var right := forward.cross(Vector3.UP).normalized()
 	var approach := -input_dir.y    # W (stick up = -y) means "approach"
 	var strafe := input_dir.x
 	return forward * approach + right * strafe
