@@ -96,7 +96,12 @@ func intent_sheathe(_sheathed: bool) -> void:
 
 func _physics_process(delta: float) -> void:
 	_apply_gravity(delta)
-	# Phase 1: actual movement/rotation added in Tasks 7-10.
+	match current_state:
+		State.STRAFING:
+			_face_opponent(rotation_lerp_weight)
+			_strafing_movement(delta)
+		_:
+			pass  # other states added in later batches
 	move_and_slide()
 
 func _apply_gravity(delta: float) -> void:
@@ -115,3 +120,45 @@ func _set_current_state(new_state: int) -> void:
 	var old := current_state
 	current_state = new_state
 	state_changed.emit(new_state, old)
+
+# =========================================================================
+# Movement — STRAFING
+# =========================================================================
+
+# Movement while locked on. Builds a desired horizontal velocity from
+# input_dir in a frame of reference defined by the opponent's direction:
+#   forward axis = unit vector from self to opponent (horizontal)
+#   right axis   = UP cross forward
+# input_dir.y convention: up on the stick = negative Y (Godot default),
+# which we negate to get "approach the opponent" on W.
+func _strafing_movement(delta: float) -> void:
+	var desired := _compute_strafe_velocity() * default_speed
+	velocity.x = move_toward(velocity.x, desired.x, acceleration * delta)
+	velocity.z = move_toward(velocity.z, desired.z, acceleration * delta)
+
+func _compute_strafe_velocity() -> Vector3:
+	if opponent == null:
+		return Vector3.ZERO
+	var to_opp := opponent.global_position - global_position
+	to_opp.y = 0.0
+	if to_opp.length_squared() < 0.0001:
+		return Vector3.ZERO
+	var forward := to_opp.normalized()
+	var right := Vector3.UP.cross(forward).normalized()
+	var approach := -input_dir.y    # W (stick up = -y) means "approach"
+	var strafe := input_dir.x
+	return forward * approach + right * strafe
+
+# Slerps the Y rotation toward facing the opponent directly.
+# Uses lerp_angle which handles wraparound cleanly.
+func _face_opponent(weight: float) -> void:
+	if opponent == null:
+		return
+	var to_opp := opponent.global_position - global_position
+	to_opp.y = 0.0
+	if to_opp.length_squared() < 0.0001:
+		return
+	# Godot character forward is -Z. atan2 of (x,z) gives the yaw such that
+	# the vector aligns with +Z; we add PI to flip to -Z.
+	var target_yaw := atan2(to_opp.x, to_opp.z) + PI
+	rotation.y = lerp_angle(rotation.y, target_yaw, weight)

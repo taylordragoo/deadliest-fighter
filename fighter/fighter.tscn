@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://cj4pl4lt6pcw5"]
+[gd_scene format=3 uid="uid://cj4pl4lt6pcw5" load_steps=6]
 
 [ext_resource type="Script" path="res://fighter/fighter.gd" id="1_fighter_script"]
 
@@ -9,6 +9,9 @@ radius = 0.4
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_fighter"]
 height = 1.8
 radius = 0.4
+
+[sub_resource type="BoxMesh" id="BoxMesh_forward_indicator"]
+size = Vector3(0.2, 0.2, 0.5)
 
 [node name="Fighter" type="CharacterBody3D"]
 collision_layer = 2
@@ -22,3 +25,7 @@ shape = SubResource("CapsuleShape3D_fighter")
 [node name="Mesh" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 mesh = SubResource("CapsuleMesh_fighter")
+
+[node name="ForwardIndicator" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, -0.5)
+mesh = SubResource("BoxMesh_forward_indicator")
