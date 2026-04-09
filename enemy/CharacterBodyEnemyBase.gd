@@ -160,6 +160,7 @@ func give_up():
 	speed = 0.0
 	chase_ended.emit()
 	await get_tree().create_timer(2).timeout
+	if !is_instance_valid(self) || current_state == state.DEAD: return
 	target = default_target
 	
 func apply_gravity(_delta):
@@ -224,21 +225,24 @@ func attack():
 	if anim_state_tree: 
 		await anim_state_tree.animation_measured
 	await get_tree().create_timer(anim_length *.4).timeout
+	if !is_instance_valid(self) || current_state == state.DEAD: return
 	attack_activated.emit()
-	dash() ## delayed dash to move forward during attack animation
+	dash()
 	await get_tree().create_timer(anim_length *.4).timeout
+	if !is_instance_valid(self) || current_state == state.DEAD: return
 	if current_state == state.ATTACK:
 		current_state = state.CHASE
 	
 	
-func retreat(): # Back away for a period of time
+func retreat():
 	var retreat_duration = 1.0
 	retreating = true
 	current_state = state.COMBAT
 	direction = -global_transform.basis.z.normalized()
 	await get_tree().create_timer(retreat_duration).timeout
+	if !is_instance_valid(self) || current_state == state.DEAD: return
 	retreating = false
-	if current_state == state.ATTACK:
+	if current_state != state.DEAD:
 		current_state = state.CHASE
 	
 #func dash(_new_direction : Vector3 = Vector3.FORWARD): 
@@ -251,12 +255,11 @@ func retreat(): # Back away for a period of time
 	#velocity = direction * speed
 	
 func dash(_new_direction : Vector3 = Vector3.FORWARD, _duration = .1): 
-	# burst of speed toward indicated direction, or forward by default
 	speed = dash_speed
 	if _new_direction:
 		direction = (global_position - to_global(_new_direction)).normalized()
-	#speed = default_speed
 	await get_tree().create_timer(_duration).timeout
+	if !is_instance_valid(self) || current_state == state.DEAD: return
 	speed = 0.0
 	direction = Vector3.ZERO
 	
@@ -273,10 +276,13 @@ func hit(_by_who, _by_what):
 		hurt_started.emit()
 		if anim_state_tree:
 			await anim_state_tree.animation_measured
+		if !is_instance_valid(self) || current_state == state.DEAD: return
 		damage_taken.emit(_by_what)
 		await get_tree().create_timer(anim_length*.5).timeout
+		if !is_instance_valid(self) || current_state == state.DEAD: return
 		can_be_hurt = true
 		await get_tree().create_timer(anim_length*.5).timeout
+		if !is_instance_valid(self) || current_state == state.DEAD: return
 		combat_timer.start()
 		if current_state == state.DYNAMIC_ACTION:
 			current_state = state.CHASE
@@ -292,6 +298,7 @@ func parried():
 	if anim_state_tree:
 		await anim_state_tree.animation_measured
 	await get_tree().create_timer(anim_length).timeout
+	if !is_instance_valid(self) || current_state == state.DEAD: return
 	combat_timer.start()
 	if current_state == state.DYNAMIC_ACTION:
 		current_state = state.CHASE
@@ -304,14 +311,15 @@ func death():
 	if ragdoll_death:
 		apply_ragdoll()
 	await get_tree().create_timer(4).timeout
+	if !is_instance_valid(self): return
 	queue_free()
 
 func apply_ragdoll():
 	general_skeleton.physical_bones_start_simulation()
 	anim_state_tree.active = false
 	
-	# if you want to stop the rag doll after a few seconds, uncomment this code.
 	await get_tree().create_timer(3).timeout
+	if !is_instance_valid(self): return
 	var bone_transforms = []
 	var bone_count = general_skeleton.get_bone_count()
 	for i in bone_count:
