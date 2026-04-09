@@ -96,10 +96,14 @@ func intent_sheathe(_sheathed: bool) -> void:
 
 func _physics_process(delta: float) -> void:
 	_apply_gravity(delta)
+	_update_lock_state()
 	match current_state:
 		State.STRAFING:
 			_face_opponent(rotation_lerp_weight)
 			_strafing_movement(delta)
+		State.SPRINTING:
+			_face_movement(rotation_lerp_weight)
+			_sprinting_movement(delta)
 		_:
 			pass  # other states added in later batches
 	move_and_slide()
@@ -161,4 +165,84 @@ func _face_opponent(weight: float) -> void:
 	# Godot character forward is -Z. atan2 of (x,z) gives the yaw such that
 	# the vector aligns with +Z; we add PI to flip to -Z.
 	var target_yaw := atan2(to_opp.x, to_opp.z) + PI
+	rotation.y = lerp_angle(rotation.y, target_yaw, weight)
+
+# =========================================================================
+# Movement — SPRINTING / break-lock
+# =========================================================================
+
+# Decides between STRAFING and SPRINTING based on:
+#  - the sprint intent (while held, force SPRINTING)
+#  - the re-engage predicate (on release, only re-lock when facing opponent within range)
+func _update_lock_state() -> void:
+	if sprint_held:
+		if current_state == State.STRAFING:
+			current_state = State.SPRINTING
+		return
+	# Sprint not held: maybe re-engage.
+	if current_state == State.SPRINTING and _should_re_engage_lock():
+		current_state = State.STRAFING
+
+# Re-engage predicate: within engage_range of the opponent AND facing them
+# closely enough (dot product of our forward vs to-opponent >= engage_facing_dot).
+func _should_re_engage_lock() -> bool:
+	if opponent == null:
+		return false
+	var to_opp := opponent.global_position - global_position
+	to_opp.y = 0.0
+	var dist_sq := to_opp.length_squared()
+	if dist_sq > engage_range * engage_range:
+		return false
+	if dist_sq < 0.0001:
+		return true  # degenerate but safe
+	var to_opp_n := to_opp / sqrt(dist_sq)
+	# Godot character forward is -Z in local space; in global space that's
+	# -global_transform.basis.z.
+	var forward := -global_transform.basis.z
+	forward.y = 0.0
+	if forward.length_squared() < 0.0001:
+		return false
+	forward = forward.normalized()
+	return forward.dot(to_opp_n) >= engage_facing_dot
+
+# Movement while lock is broken. Velocity is in world space.
+# Speed is sprint_speed while sprint_held, otherwise default_speed
+# (the "graceful walk" state after sprint release but before re-engage).
+func _sprinting_movement(delta: float) -> void:
+	var speed := sprint_speed if sprint_held else default_speed
+	var desired := _compute_sprint_velocity() * speed
+	velocity.x = move_toward(velocity.x, desired.x, acceleration * delta)
+	velocity.z = move_toward(velocity.z, desired.z, acceleration * delta)
+
+# Computes a camera-relative movement direction for the sprint (free) mode.
+# Projects the camera's local -Z onto the horizontal plane for forward,
+# and cam_forward x UP for the right axis.
+# Stick up (input_dir.y < 0) moves the fighter away from the camera = "forward."
+func _compute_sprint_velocity() -> Vector3:
+	if input_dir.length_squared() < 0.0001:
+		return Vector3.ZERO
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		# Fallback: world-space movement if there is no current camera.
+		var fallback := Vector3(input_dir.x, 0.0, input_dir.y)
+		return fallback.normalized()
+	# Project the camera's forward (its local -Z in world space) onto the
+	# horizontal plane. This is the direction the player sees as "away."
+	var cam_forward := -cam.global_transform.basis.z
+	cam_forward.y = 0.0
+	if cam_forward.length_squared() < 0.0001:
+		return Vector3.ZERO
+	cam_forward = cam_forward.normalized()
+	var cam_right := cam_forward.cross(Vector3.UP).normalized()
+	# Stick up = -y, which should move "forward" (away from camera viewer).
+	var move := -cam_forward * input_dir.y + cam_right * input_dir.x
+	return move.normalized()
+
+# Slerps the Y rotation toward the direction of the current horizontal velocity.
+# Used while sprinting so the fighter faces where it's going, not the opponent.
+func _face_movement(weight: float) -> void:
+	var horizontal_vel := Vector3(velocity.x, 0.0, velocity.z)
+	if horizontal_vel.length_squared() < 0.04:
+		return  # don't snap facing when nearly stopped (~0.2 units/s threshold)
+	var target_yaw := atan2(horizontal_vel.x, horizontal_vel.z) + PI
 	rotation.y = lerp_angle(rotation.y, target_yaw, weight)
