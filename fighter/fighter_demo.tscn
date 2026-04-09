@@ -37,9 +37,11 @@ mesh = SubResource("BoxMesh_floor")
 
 [node name="FighterA" parent="." instance=ExtResource("1_fighter_scene")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, 0)
+opponent = NodePath("../FighterB")
 
 [node name="FighterB" parent="." instance=ExtResource("1_fighter_scene")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0)
+opponent = NodePath("../FighterA")
 
 [node name="PlaceholderCam" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 8)
