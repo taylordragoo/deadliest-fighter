@@ -1,25 +1,15 @@
 # fighter/tests/test_fighter_states.gd
-# Runtime tests for Fighter state transitions. Unlike test_fighter_cam.gd,
-# these need a SceneTree because Fighter is a CharacterBody3D. We instantiate
-# two bare Fighters in a temporary root, poke their intents, and check state.
+# Runtime tests for FighterBody state transitions. Instantiates two bare
+# FighterBodies in a temporary root, pokes their intents, and checks state.
 #
 # Run headless:  godot --headless --script fighter/tests/test_fighter_states.gd
-#
-# NOTE: Tests run in _process (not _init) because CharacterBody3D nodes only
-# enter the tree after the SceneTree has finished initializing — add_child
-# during _init leaves nodes with is_inside_tree()=false, so global_transform
-# reads return identity and the facing/distance predicates break. _process
-# fires after the tree is live, so global_position and global_transform.basis
-# work correctly.
 extends "res://fighter/tests/test_runner.gd"
 
-const FighterScript = preload("res://fighter/fighter.gd")
+const FighterBodyScript = preload("res://fighter/fighter_body.gd")
 
 var _ran: bool = false
 
 func _init() -> void:
-	# Do not call super._init(): it would run tests immediately (before the
-	# SceneTree is live) and then quit. We defer test execution to _process.
 	print("=== %s ===" % get_script().resource_path.get_file())
 
 func _process(_delta: float) -> bool:
@@ -32,30 +22,32 @@ func _process(_delta: float) -> bool:
 	return false
 
 func _run_all_tests() -> void:
-	_test_initial_state_is_strafing()
-	_test_sprint_held_transitions_to_sprinting()
+	_test_initial_state_is_free()
+	_test_sprint_held_transitions_to_sprint()
 	_test_sprint_released_in_range_and_facing_reengages()
-	_test_sprint_released_far_away_does_not_reengage()
-	_test_sprint_released_facing_away_does_not_reengage()
+	_test_sprint_released_far_away_stays_sprint()
+	_test_sprint_released_facing_away_stays_sprint()
+	_test_stance_change_upper()
+	_test_stance_change_middle()
+	_test_stance_change_lower_is_noop()
 
 # -- Helpers --------------------------------------------------------------
 
 func _make_fighter_pair(a_pos: Vector3, b_pos: Vector3) -> Array:
-	var a: Fighter = FighterScript.new()
-	var b: Fighter = FighterScript.new()
+	var a: FighterBody = FighterBodyScript.new()
+	var b: FighterBody = FighterBodyScript.new()
 	a.name = "A"
 	b.name = "B"
 	get_root().add_child(a)
 	get_root().add_child(b)
-	# Use position (local) not global_position: for root-level nodes local == world.
-	# global_position's setter internally reads get_global_transform() which can
-	# fail with "!is_inside_tree()" during _init; _process avoids that, but
-	# position is still the safe choice.
 	a.position = a_pos
 	b.position = b_pos
 	a.opponent = b
 	b.opponent = a
-	# Face A toward B manually so the re-engage predicate has a defined forward.
+	# Force state to FREE (skip the STATIC_ACTION → FREE startup await)
+	a.current_state = FighterBody.state.FREE
+	b.current_state = FighterBody.state.FREE
+	# Face A toward B
 	var to_b := (b_pos - a_pos)
 	to_b.y = 0
 	a.rotation.y = atan2(to_b.x, to_b.z) + PI
@@ -67,46 +59,63 @@ func _teardown(pair: Array) -> void:
 
 # -- Tests ----------------------------------------------------------------
 
-func _test_initial_state_is_strafing() -> void:
+func _test_initial_state_is_free() -> void:
 	var pair := _make_fighter_pair(Vector3(-2, 0, 0), Vector3(2, 0, 0))
-	var a: Fighter = pair[0]
-	assert_eq(a.current_state, Fighter.State.STRAFING, "new Fighter starts in STRAFING")
+	var a: FighterBody = pair[0]
+	# We forced FREE in the helper; the real startup goes STATIC_ACTION → FREE via await.
+	assert_eq(a.current_state, FighterBody.state.FREE, "fighter starts in FREE (after forced set)")
 	_teardown(pair)
 
-func _test_sprint_held_transitions_to_sprinting() -> void:
+func _test_sprint_held_transitions_to_sprint() -> void:
 	var pair := _make_fighter_pair(Vector3(-2, 0, 0), Vector3(2, 0, 0))
-	var a: Fighter = pair[0]
+	var a: FighterBody = pair[0]
 	a.intent_sprint(true)
-	a._update_lock_state()
-	assert_eq(a.current_state, Fighter.State.SPRINTING, "sprint held flips STRAFING -> SPRINTING")
+	assert_eq(a.current_state, FighterBody.state.SPRINT, "sprint held flips FREE -> SPRINT")
 	_teardown(pair)
 
 func _test_sprint_released_in_range_and_facing_reengages() -> void:
 	var pair := _make_fighter_pair(Vector3(-2, 0, 0), Vector3(2, 0, 0))
-	var a: Fighter = pair[0]
-	a.current_state = Fighter.State.SPRINTING
+	var a: FighterBody = pair[0]
+	a.current_state = FighterBody.state.SPRINT
 	a.intent_sprint(false)
-	a._update_lock_state()
-	assert_eq(a.current_state, Fighter.State.STRAFING, "sprint released within range, facing opponent -> STRAFING")
+	assert_eq(a.current_state, FighterBody.state.FREE, "sprint released within range, facing -> FREE")
 	_teardown(pair)
 
-func _test_sprint_released_far_away_does_not_reengage() -> void:
-	# Put A far outside engage_range (default 8.0).
+func _test_sprint_released_far_away_stays_sprint() -> void:
 	var pair := _make_fighter_pair(Vector3(-20, 0, 0), Vector3(0, 0, 0))
-	var a: Fighter = pair[0]
-	a.current_state = Fighter.State.SPRINTING
+	var a: FighterBody = pair[0]
+	a.current_state = FighterBody.state.SPRINT
 	a.intent_sprint(false)
-	a._update_lock_state()
-	assert_eq(a.current_state, Fighter.State.SPRINTING, "sprint released far away stays in SPRINTING")
+	assert_eq(a.current_state, FighterBody.state.SPRINT, "sprint released far away stays SPRINT")
 	_teardown(pair)
 
-func _test_sprint_released_facing_away_does_not_reengage() -> void:
+func _test_sprint_released_facing_away_stays_sprint() -> void:
 	var pair := _make_fighter_pair(Vector3(-2, 0, 0), Vector3(2, 0, 0))
-	var a: Fighter = pair[0]
-	# Rotate A to face AWAY from B (opposite of what _make_fighter_pair set).
-	a.rotation.y += PI
-	a.current_state = Fighter.State.SPRINTING
+	var a: FighterBody = pair[0]
+	a.rotation.y += PI  # Face away from B
+	a.current_state = FighterBody.state.SPRINT
 	a.intent_sprint(false)
-	a._update_lock_state()
-	assert_eq(a.current_state, Fighter.State.SPRINTING, "sprint released facing away stays in SPRINTING")
+	assert_eq(a.current_state, FighterBody.state.SPRINT, "sprint released facing away stays SPRINT")
+	_teardown(pair)
+
+func _test_stance_change_upper() -> void:
+	var pair := _make_fighter_pair(Vector3(-2, 0, 0), Vector3(2, 0, 0))
+	var a: FighterBody = pair[0]
+	a.intent_change_stance(FighterBody.Stance.UPPER)
+	assert_eq(a.weapon_type, "HEAVY", "stance UPPER sets weapon_type to HEAVY")
+	_teardown(pair)
+
+func _test_stance_change_middle() -> void:
+	var pair := _make_fighter_pair(Vector3(-2, 0, 0), Vector3(2, 0, 0))
+	var a: FighterBody = pair[0]
+	a.intent_change_stance(FighterBody.Stance.UPPER)
+	a.intent_change_stance(FighterBody.Stance.MIDDLE)
+	assert_eq(a.weapon_type, "SLASH", "stance MIDDLE sets weapon_type back to SLASH")
+	_teardown(pair)
+
+func _test_stance_change_lower_is_noop() -> void:
+	var pair := _make_fighter_pair(Vector3(-2, 0, 0), Vector3(2, 0, 0))
+	var a: FighterBody = pair[0]
+	a.intent_change_stance(FighterBody.Stance.LOWER)
+	assert_eq(a.weapon_type, "SLASH", "stance LOWER is a no-op, weapon_type stays SLASH")
 	_teardown(pair)
