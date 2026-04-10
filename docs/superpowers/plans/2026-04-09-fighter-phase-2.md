@@ -4,7 +4,7 @@
 
 **Goal:** Replace Phase 1's capsule fighter with a fork of the souls character controller + scene + animation tree, wire stance-switching (MIDDLE=Light, UPPER=Heavy) and strike animation playback, and close the stance-legibility risk.
 
-**Architecture:** Fork `player/character_body_souls_base.gd`, `player/souls_animation_tree.gd`, and `player/character_body_souls_base.tscn` into `fighter/`. Strip souls-specific systems. Rewrite strafing movement to be opponent-relative (porting Phase 1's math). Bolt the existing brain abstraction on top. The animation tree's weapon-swap mechanism (`SLASH_tree`/`HEAVY_tree`) becomes stance-swap with zero graph changes.
+**Architecture:** Fork `player/character_body_souls_base.gd`, `player/souls_animation_tree.gd`, and `player/character_body_souls_base.tscn` into `fighter/`. Strip souls-specific systems. Rewrite strafing movement to be opponent-relative (porting Phase 1's math). Bolt the existing brain abstraction on top. The animation tree's weapon-swap mechanism (`SLASH_tree`/`HEAVY_tree`) becomes stance-swap. The forked scene's AnimationTree graph resource contains serialized `advance_expression` strings that reference `player_node` — these are migrated to `fighter_node` via text replacement, and shim properties are added to the anim tree script for stripped members referenced by dormant sub-graphs.
 
 **Tech Stack:** Godot 4.7 + GDScript. No external test framework — pure-math tests run via `godot --headless --script <path>`. Scene wiring tests run headless via scene instantiation. Visual verification is manual F5.
 
@@ -100,6 +100,14 @@ signal hurt_started
 signal damage_taken
 signal death_started
 var is_dead: bool = false
+
+# --- Shim for dormant AnimationTree advance_expressions ---
+# The forked scene's AnimationTree graph has advance_expressions like
+# "fighter_node.current_item.object_type == \"DRINK\"" in the UseItem
+# sub-graph. That sub-graph is never entered at Phase 2, but Godot may
+# evaluate the expression during tree init. This null satisfies the
+# reference without adding item system code.
+var current_item = null
 
 # --- Jump and gravity ---
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
@@ -572,7 +580,7 @@ git commit -m "feat(fighter): fork souls controller into FighterBody with oppone
 **Files:**
 - Create: `fighter/fighter_animation_tree.gd`
 
-Fork of `player/souls_animation_tree.gd` (232 lines) stripped to ~140 lines. Removes ladder, interact, item, and gadget handlers. Renames `player_node` → `fighter_node` throughout.
+Fork of `player/souls_animation_tree.gd` (232 lines) stripped to ~140 lines. Removes ladder, interact, item, and gadget handlers. Renames `player_node` → `fighter_node` throughout. Adds shim properties (`gadget_type`, `interact_type`, `current_item`) so that dormant AnimationTree advance_expressions referencing stripped members don't crash during tree initialization.
 
 - [ ] **Step 1: Write `fighter/fighter_animation_tree.gd`**
 
@@ -597,6 +605,18 @@ var last_oneshot: String = "Attack"
 var lerp_movement
 
 var guard_value: float = 0.0
+
+# --- Shim properties for dormant AnimationTree advance_expressions ---
+# The forked scene's AnimationTree graph contains serialized advance_expression
+# strings in sub-graphs that are never entered at Phase 2 (Gadget, UseItem,
+# Interacts). Those expressions reference player_node.gadget_type,
+# player_node.current_item, and interact_type. After renaming player_node →
+# fighter_node in the .tscn, the expressions resolve against fighter_node
+# (FighterBody) — but FighterBody doesn't have gadget_type or current_item.
+# These shims prevent expression evaluation errors if Godot touches the
+# dormant sub-graphs during tree initialization.
+var gadget_type: String = "SHIELD"
+var interact_type: String = "GENERIC"
 
 signal animation_measured
 
@@ -905,29 +925,7 @@ git commit -m "chore: add p0_stance_upper and p0_strike input actions"
 
 ---
 
-## Task 6: Delete Phase 1 capsule files
-
-**Files:**
-- Delete: `fighter/fighter.gd`
-- Delete: `fighter/fighter.gd.uid`
-- Delete: `fighter/fighter.tscn`
-
-- [ ] **Step 1: Delete the files**
-
-```bash
-rm fighter/fighter.gd fighter/fighter.gd.uid fighter/fighter.tscn
-```
-
-- [ ] **Step 2: Commit**
-
-```bash
-git add -A fighter/fighter.gd fighter/fighter.gd.uid fighter/fighter.tscn
-git commit -m "chore: delete Phase 1 capsule fighter (replaced by FighterBody fork)"
-```
-
----
-
-## Task 7: Fork `fighter/fighter_body.tscn` — MANUAL EDITOR STEP
+## Task 6: Fork `fighter/fighter_body.tscn` — MANUAL EDITOR STEP
 
 **Files:**
 - Create: `fighter/fighter_body.tscn` (via Godot editor save-as)
@@ -993,6 +991,73 @@ git commit -m "feat(fighter): fork souls character scene into fighter_body.tscn"
 
 ---
 
+## Task 7: Migrate AnimationTree advance_expressions in `fighter_body.tscn`
+
+**Files:**
+- Modify: `fighter/fighter_body.tscn`
+
+The forked scene's AnimationTree graph resource contains 17 serialized `advance_expression` strings that reference `player_node` (the old export name). After Task 7 swapped the AnimStateTree's script to `fighter_animation_tree.gd` (which exports `fighter_node`, not `player_node`), these expressions will fail at runtime — the AnimationTree evaluates them as GDScript expressions against the script's properties.
+
+Critical expressions in **active** sub-graphs (will crash or break transitions if not fixed):
+- `player_node.is_on_floor()` — 8 occurrences in SLASH_tree/HEAVY_tree MoveStrafe↔Falling transitions
+- `player_node.current_state == player_node.state.FREE` — 2 occurrences in MovementStates transitions
+- `player_node.current_state != player_node.state.SPRINT` — 1 occurrence
+- `player_node.input_dir` / `!player_node.input_dir` — 2 occurrences in Sprint transitions
+
+Expressions in **dormant** sub-graphs (Gadget, UseItem, Interacts — never entered at Phase 2):
+- `player_node.gadget_type == "SHIELD"` — 1 occurrence
+- `player_node.current_item.*` — 3 occurrences
+- `interact_type == "..."` — 4 occurrences (these reference the anim tree's own var, not player_node)
+
+The fix is a targeted text replacement: rename `player_node` → `fighter_node` in all `advance_expression` lines and in the AnimStateTree's `node_paths` serialization.
+
+- [ ] **Step 1: Replace `player_node` → `fighter_node` in advance_expressions**
+
+```bash
+sed -i '' '/advance_expression/s/player_node/fighter_node/g' fighter/fighter_body.tscn
+```
+
+This targets only lines containing `advance_expression`, avoiding animation track data or other contexts.
+
+- [ ] **Step 2: Replace `player_node` in the AnimStateTree's node_paths serialization**
+
+```bash
+sed -i '' 's/node_paths=PackedStringArray("player_node")/node_paths=PackedStringArray("fighter_node")/g' fighter/fighter_body.tscn
+```
+
+This updates the AnimStateTree's exported property reference so Godot knows which NodePath to resolve for the `fighter_node` export.
+
+- [ ] **Step 3: Also update the property assignment line**
+
+```bash
+sed -i '' 's/^player_node = NodePath/fighter_node = NodePath/g' fighter/fighter_body.tscn
+```
+
+This renames the actual property value assignment (e.g., `player_node = NodePath("..")` → `fighter_node = NodePath("..")`).
+
+- [ ] **Step 4: Verify the replacements**
+
+```bash
+grep -c "player_node" fighter/fighter_body.tscn
+```
+
+Expected: 0 occurrences remaining in advance_expressions and AnimStateTree properties. If any `player_node` references remain in animation track data, that's fine — those reference bone names or node paths, not script properties.
+
+```bash
+grep "advance_expression.*fighter_node" fighter/fighter_body.tscn | head -5
+```
+
+Expected: expressions now read `fighter_node.is_on_floor()`, `fighter_node.current_state == fighter_node.state.FREE`, etc.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add fighter/fighter_body.tscn
+git commit -m "fix(fighter): migrate AnimationTree advance_expressions from player_node to fighter_node"
+```
+
+---
+
 ## Task 8: Update `fighter/fighter_demo.tscn` — reference new scene
 
 **Files:**
@@ -1026,7 +1091,7 @@ The `id` stays the same (`1_fighter_scene`), so all instance references (`ExtRes
 
 Open `fighter/fighter_demo.tscn` in the Godot editor. Both fighters should appear as rigged characters (not capsules). The FighterCam, Floor, Sun, and WorldEnv should all be present.
 
-If either fighter shows as a broken instance (red icon), check that `fighter_body.tscn` saved correctly in Task 7 and that the UID matches.
+If either fighter shows as a broken instance (red icon), check that `fighter_body.tscn` saved correctly in Task 6 and that the UID matches.
 
 - [ ] **Step 4: Commit**
 
@@ -1037,7 +1102,31 @@ git commit -m "fix(fighter): update demo scene to reference fighter_body.tscn"
 
 ---
 
-## Task 9: Update `fighter/tests/test_fighter_states.gd`
+## Task 9: Delete Phase 1 capsule files
+
+**Files:**
+- Delete: `fighter/fighter.gd`
+- Delete: `fighter/fighter.gd.uid`
+- Delete: `fighter/fighter.tscn`
+
+Now that `fighter_demo.tscn` points at `fighter_body.tscn`, the old capsule files are dead references. Deleting them before the demo scene was rewired would break Godot's main scene on launch.
+
+- [ ] **Step 1: Delete the files**
+
+```bash
+rm fighter/fighter.gd fighter/fighter.gd.uid fighter/fighter.tscn
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add -A fighter/fighter.gd fighter/fighter.gd.uid fighter/fighter.tscn
+git commit -m "chore: delete Phase 1 capsule fighter (replaced by FighterBody fork)"
+```
+
+---
+
+## Task 10: Update `fighter/tests/test_fighter_states.gd`
 
 **Files:**
 - Modify: `fighter/tests/test_fighter_states.gd`
@@ -1195,12 +1284,12 @@ git commit -m "test(fighter): update state tests for FighterBody, add stance tes
 
 ---
 
-## Task 10: Write `fighter/tests/test_fighter_anim_wiring.gd`
+## Task 11: Write `fighter/tests/test_fighter_anim_wiring.gd`
 
 **Files:**
 - Create: `fighter/tests/test_fighter_anim_wiring.gd`
 
-Headless smoke test that loads `fighter_demo.tscn` and verifies the scene wiring is correct. This test can only pass after Task 7 (manual editor) and Task 8 (demo scene update) are complete.
+Headless smoke test that loads `fighter_demo.tscn` and verifies the scene wiring is correct. This test can only pass after Task 6 (manual editor), Task 7 (advance_expression migration), and Task 8 (demo scene update) are complete.
 
 - [ ] **Step 1: Write the test file**
 
@@ -1211,26 +1300,34 @@ Headless smoke test that loads `fighter_demo.tscn` and verifies the scene wiring
 # and the stance sub-tree parameter paths exist.
 #
 # Run headless:  godot --headless --script fighter/tests/test_fighter_anim_wiring.gd
+#
+# NOTE: This test uses _process with await. Because _process does not
+# propagate the coroutine, we gate the quit behind a _done flag that is
+# set only after the awaited assertions complete. _process polls the flag
+# each frame and quits when it's true.
 extends "res://fighter/tests/test_runner.gd"
 
-var _ran: bool = false
+var _started: bool = false
+var _done: bool = false
 
 func _init() -> void:
 	print("=== %s ===" % get_script().resource_path.get_file())
 
 func _process(_delta: float) -> bool:
-	if _ran:
+	if _done:
+		print("\nResults: %d passed, %d failed" % [_pass_count, _fail_count])
+		quit(0 if _fail_count == 0 else 1)
 		return false
-	_ran = true
-	_run_all_tests()
-	print("\nResults: %d passed, %d failed" % [_pass_count, _fail_count])
-	quit(0 if _fail_count == 0 else 1)
+	if not _started:
+		_started = true
+		_run_all_tests_async()
 	return false
 
-func _run_all_tests() -> void:
+func _run_all_tests_async() -> void:
 	var demo_scene := load("res://fighter/fighter_demo.tscn")
 	assert_true(demo_scene != null, "fighter_demo.tscn loads")
 	if demo_scene == null:
+		_done = true
 		return
 
 	var demo: Node3D = demo_scene.instantiate()
@@ -1245,6 +1342,7 @@ func _run_all_tests() -> void:
 	assert_true(fighter_b != null, "FighterB resolves as FighterBody")
 	if fighter_a == null or fighter_b == null:
 		demo.queue_free()
+		_done = true
 		return
 
 	# Check anim_state_tree references
@@ -1279,6 +1377,7 @@ func _run_all_tests() -> void:
 		assert_true(brain.fighter == fighter_a, "PlayerBrain.fighter == FighterA")
 
 	demo.queue_free()
+	_done = true
 ```
 
 - [ ] **Step 2: Run the test**
@@ -1298,7 +1397,7 @@ git commit -m "test(fighter): add headless smoke test for anim tree wiring"
 
 ---
 
-## Task 11: Manual F5 verification — Phase 2 gate
+## Task 12: Manual F5 verification — Phase 2 gate
 
 This is the final gate. Open the Godot editor.
 
@@ -1338,13 +1437,15 @@ Only create this commit if changes were made during verification.
 ## Execution notes
 
 **Task ordering constraints:**
-- Tasks 1–6 can run sequentially without the Godot editor.
-- Task 7 **requires the Godot editor** (manual scene save-as and node deletion).
-- Task 8 depends on Task 7 (needs the UID from `fighter_body.tscn`).
-- Task 9 can run after Tasks 1, 3 (needs `FighterBody` class to exist, but not the scene).
-- Task 10 depends on Tasks 7 and 8 (needs the demo scene to reference the new fighter body).
-- Task 11 depends on all prior tasks.
+- Tasks 1–5 can run sequentially without the Godot editor.
+- Task 6 **requires the Godot editor** (manual scene save-as and node deletion).
+- Task 7 depends on Task 6 (text-edits the scene file Task 6 produces).
+- Task 8 depends on Task 6 (needs the UID from `fighter_body.tscn`).
+- Task 9 (delete old capsule files) depends on Task 8 — the demo scene must point at `fighter_body.tscn` before `fighter.tscn` is deleted, or Godot's main scene is broken.
+- Task 10 depends on Tasks 1, 2, and 3 (needs `FighterBody` and `FighterAnimationTree` classes to exist). It does NOT depend on the scene fork.
+- Task 11 depends on Tasks 6, 7, and 8 (needs the demo scene to reference the new fighter body with migrated expressions).
+- Task 12 depends on all prior tasks.
 
-**Parallelizable:** Tasks 1 and 2 are independent and can run concurrently. Tasks 3 and 4 are independent and can run concurrently. Tasks 9 and 5 are independent and can run concurrently.
+**Parallelizable:** Tasks 1 and 2 are independent and can run concurrently. Tasks 3 and 4 are independent and can run concurrently. Task 10 can run in parallel with Tasks 6–9.
 
-**The manual step (Task 7) is the serialization point.** Everything before it is CLI-automatable. Everything after it depends on the scene file it produces.
+**The manual step (Task 6) is the serialization point.** Everything before it is CLI-automatable. Tasks 7–9 and 11–12 depend on the scene file it produces. Task 10 (state tests) is independent of the scene fork.
