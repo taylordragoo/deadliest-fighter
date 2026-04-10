@@ -7,7 +7,7 @@ extends SceneTree
 var _pass_count: int = 0
 var _fail_count: int = 0
 
-func _init():
+func _init() -> void:
 	print("=== %s ===" % get_script().resource_path.get_file())
 	_run_all_tests()
 	print("\nResults: %d passed, %d failed" % [_pass_count, _fail_count])
@@ -41,7 +41,7 @@ func assert_vec3_near(actual: Vector3, expected: Vector3, eps: float, label: Str
 		_fail_count += 1
 		printerr("  FAIL  %s  (got %s, expected %s ± %f)" % [label, actual, expected, eps])
 
-func assert_eq(actual, expected, label: String) -> void:
+func assert_eq(actual: Variant, expected: Variant, label: String) -> void:
 	if actual == expected:
 		_pass_count += 1
 		print("  PASS  %s  (got %s)" % [label, actual])

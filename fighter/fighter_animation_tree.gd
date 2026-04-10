@@ -138,13 +138,13 @@ func _on_jump_started() -> void:
 func _on_weapon_change_started() -> void:
 	request_oneshot("WeaponChange")
 
-func _on_weapon_change_ended(_new_weapon_type) -> void:
+func _on_weapon_change_ended(_new_weapon_type: String) -> void:
 	var weapon_tree_exists: bool = tree_root.get_node("MovementStates").has_node(str(_new_weapon_type) + "_tree")
 	if weapon_tree_exists:
 		weapon_type = _new_weapon_type
 	else:
 		weapon_type = "SLASH"
-	current_weapon_tree = get("parameters/MovementStates/" + str(_new_weapon_type) + "_tree/playback")
+	current_weapon_tree = get("parameters/MovementStates/" + str(_new_weapon_type) + "_tree/playback") as AnimationNodeStateMachinePlayback
 
 func set_strafe() -> void:
 	var new_blend := Vector2(fighter_node.strafe_cross_product, fighter_node.move_dot_product)
@@ -165,7 +165,7 @@ func set_free_move() -> void:
 	set("parameters/MovementStates/" + weapon_type + "_tree/MoveStrafe/blend_position", lerp_movement)
 
 func _on_animation_started(anim_name: String) -> void:
-	anim_length = get_node(anim_player).get_animation(anim_name).length
+	anim_length = (get_node(anim_player) as AnimationPlayer).get_animation(anim_name).length
 	animation_measured.emit(anim_length)
 
 func _on_attack_timer_timeout() -> void:

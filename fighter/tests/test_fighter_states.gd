@@ -33,7 +33,7 @@ func _run_all_tests() -> void:
 
 # -- Helpers --------------------------------------------------------------
 
-func _make_fighter_pair(a_pos: Vector3, b_pos: Vector3) -> Array:
+func _make_fighter_pair(a_pos: Vector3, b_pos: Vector3) -> Array[FighterBody]:
 	var a: FighterBody = FighterBodyScript.new()
 	var b: FighterBody = FighterBodyScript.new()
 	a.name = "A"
@@ -53,7 +53,7 @@ func _make_fighter_pair(a_pos: Vector3, b_pos: Vector3) -> Array:
 	a.rotation.y = atan2(to_b.x, to_b.z) + PI
 	return [a, b]
 
-func _teardown(pair: Array) -> void:
+func _teardown(pair: Array[FighterBody]) -> void:
 	for f in pair:
 		f.queue_free()
 

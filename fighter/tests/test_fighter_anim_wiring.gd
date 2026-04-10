@@ -59,11 +59,11 @@ func _run_all_tests_async() -> void:
 			"FighterA.anim_state_tree.fighter_node == FighterA"
 		)
 		# Verify SLASH_tree (MIDDLE) parameter path exists
-		var slash_blend = fighter_a.anim_state_tree.get(
+		var slash_blend: Variant = fighter_a.anim_state_tree.get(
 			"parameters/MovementStates/SLASH_tree/MoveStrafe/blend_position")
 		assert_true(slash_blend is Vector2, "SLASH_tree MoveStrafe blend_position is a Vector2")
 		# Verify HEAVY_tree (UPPER) parameter path exists
-		var heavy_blend = fighter_a.anim_state_tree.get(
+		var heavy_blend: Variant = fighter_a.anim_state_tree.get(
 			"parameters/MovementStates/HEAVY_tree/MoveStrafe/blend_position")
 		assert_true(heavy_blend is Vector2, "HEAVY_tree MoveStrafe blend_position is a Vector2")
 

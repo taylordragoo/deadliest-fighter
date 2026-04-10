@@ -58,12 +58,13 @@ var is_dead: bool = false
 # sub-graph. That sub-graph is never entered at Phase 2, but Godot may
 # evaluate the expression during tree init. This null satisfies the
 # reference without adding item system code.
-var current_item = null
+var current_item: Variant = null
 
 # --- Jump and gravity ---
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 @export var jump_velocity: float = 4.5
-@onready var last_altitude: Variant = global_position
+@onready var last_altitude: Vector3 = global_position
+var _tracking_fall: bool = false
 @export var hard_landing_height: float = 4.0
 signal landed_hard
 signal jump_started
@@ -402,13 +403,14 @@ func apply_gravity(_delta: float) -> void:
 		velocity.y -= gravity * _delta
 
 func fall_check() -> void:
-	if not is_on_floor() and last_altitude == null:
+	if not is_on_floor() and not _tracking_fall:
 		last_altitude = global_position
-	if is_on_floor() and last_altitude != null:
+		_tracking_fall = true
+	if is_on_floor() and _tracking_fall:
 		var fall_distance: float = abs(last_altitude.y - global_position.y)
 		if fall_distance > hard_landing_height:
 			hard_landing()
-		last_altitude = null
+		_tracking_fall = false
 
 func hard_landing() -> void:
 	current_state = state.STATIC_ACTION
@@ -445,7 +447,7 @@ func end_guard() -> void:
 	parry_active = false
 	current_state = state.FREE
 
-func hit(_who, _by_what) -> void:
+func hit(_who: Node, _by_what: Variant) -> void:
 	if can_be_hurt:
 		if parry_active:
 			parry()
