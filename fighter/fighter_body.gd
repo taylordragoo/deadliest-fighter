@@ -63,7 +63,7 @@ var current_item = null
 # --- Jump and gravity ---
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 @export var jump_velocity: float = 4.5
-@onready var last_altitude = global_position
+@onready var last_altitude: Variant = global_position
 @export var hard_landing_height: float = 4.0
 signal landed_hard
 signal jump_started
