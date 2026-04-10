@@ -15,7 +15,7 @@ class_name FighterAnimationTree
 @onready var anim_length: float
 
 var last_oneshot: String = "Attack"
-var lerp_movement
+var lerp_movement: Vector2
 
 var guard_value: float = 0.0
 
@@ -82,7 +82,7 @@ func set_guarding() -> void:
 		guard_value = 1
 	else:
 		guard_value = 0
-	var new_blend := lerp(get("parameters/Guarding/blend_amount"), guard_value, 0.2)
+	var new_blend: float = lerp(float(get("parameters/Guarding/blend_amount")), guard_value, 0.2)
 	set("parameters/Guarding/blend_amount", new_blend)
 
 func _on_parry_started() -> void:
@@ -152,7 +152,7 @@ func set_strafe() -> void:
 		new_blend *= 0.25
 	else:
 		new_blend *= Vector2(abs(fighter_node.input_dir.x), abs(fighter_node.input_dir.y))
-	lerp_movement = get("parameters/MovementStates/" + weapon_type + "_tree/MoveStrafe/blend_position")
+	lerp_movement = Vector2(get("parameters/MovementStates/" + weapon_type + "_tree/MoveStrafe/blend_position"))
 	lerp_movement = lerp(lerp_movement, new_blend, 0.2)
 	set("parameters/MovementStates/" + weapon_type + "_tree/MoveStrafe/blend_position", lerp_movement)
 
@@ -160,7 +160,7 @@ func set_free_move() -> void:
 	var new_blend := Vector2(0, abs(fighter_node.input_dir.x) + abs(fighter_node.input_dir.y))
 	if fighter_node.current_state == fighter_node.state.DYNAMIC_ACTION:
 		new_blend *= 0.4
-	lerp_movement = get("parameters/MovementStates/" + weapon_type + "_tree/MoveStrafe/blend_position")
+	lerp_movement = Vector2(get("parameters/MovementStates/" + weapon_type + "_tree/MoveStrafe/blend_position"))
 	lerp_movement = lerp(lerp_movement, new_blend, 0.2)
 	set("parameters/MovementStates/" + weapon_type + "_tree/MoveStrafe/blend_position", lerp_movement)
 
