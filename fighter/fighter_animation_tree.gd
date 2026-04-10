@@ -139,7 +139,7 @@ func _on_weapon_change_started() -> void:
 	request_oneshot("WeaponChange")
 
 func _on_weapon_change_ended(_new_weapon_type) -> void:
-	var weapon_tree_exists := tree_root.get_node("MovementStates").has_node(str(_new_weapon_type) + "_tree")
+	var weapon_tree_exists: bool = tree_root.get_node("MovementStates").has_node(str(_new_weapon_type) + "_tree")
 	if weapon_tree_exists:
 		weapon_type = _new_weapon_type
 	else:
