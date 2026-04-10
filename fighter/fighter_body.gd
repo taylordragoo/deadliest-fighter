@@ -52,13 +52,21 @@ signal damage_taken
 signal death_started
 var is_dead: bool = false
 
-# --- Shim for dormant AnimationTree advance_expressions ---
-# The forked scene's AnimationTree graph has advance_expressions like
-# "fighter_node.current_item.object_type == \"DRINK\"" in the UseItem
-# sub-graph. That sub-graph is never entered at Phase 2, but Godot may
-# evaluate the expression during tree init. This null satisfies the
-# reference without adding item system code.
-var current_item: Variant = null
+# --- Shims for dormant AnimationTree advance_expressions ---
+# The forked scene's AnimationTree graph has advance_expressions that
+# reference fighter_node properties from stripped systems. These sub-graphs
+# are never entered at Phase 2, but Godot may evaluate the expressions
+# during tree init. These shims prevent "Invalid get index" errors.
+#   fighter_node.gadget_type == "SHIELD"  (Gadget sub-graph)
+#   fighter_node.current_item.object_type == "DRINK"/"THROWN"  (UseItem sub-graph)
+#   fighter_node.current_item == null  (UseItem sub-graph)
+var gadget_type: String = "SHIELD"
+var current_item: ItemStub = ItemStub.new()
+
+## Minimal stub satisfying dormant advance_expressions that dereference
+## current_item.object_type. Avoids depending on the souls ItemResource.
+class ItemStub:
+	var object_type: String = "NONE"
 
 # --- Jump and gravity ---
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")

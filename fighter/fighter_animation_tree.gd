@@ -19,16 +19,10 @@ var lerp_movement: Vector2
 
 var guard_value: float = 0.0
 
-# --- Shim properties for dormant AnimationTree advance_expressions ---
-# The forked scene's AnimationTree graph contains serialized advance_expression
-# strings in sub-graphs that are never entered at Phase 2 (Gadget, UseItem,
-# Interacts). Those expressions reference player_node.gadget_type,
-# player_node.current_item, and interact_type. After renaming player_node →
-# fighter_node in the .tscn, the expressions resolve against fighter_node
-# (FighterBody) — but FighterBody doesn't have gadget_type or current_item.
-# These shims prevent expression evaluation errors if Godot touches the
-# dormant sub-graphs during tree initialization.
-var gadget_type: String = "SHIELD"
+# --- Shim for dormant AnimationTree advance_expressions ---
+# The interact_type expressions (e.g. interact_type == "GENERIC") resolve
+# against the anim tree script itself, not fighter_node. This shim prevents
+# errors if Godot evaluates the dormant Interacts sub-graph during init.
 var interact_type: String = "GENERIC"
 
 signal animation_measured
