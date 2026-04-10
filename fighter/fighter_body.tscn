@@ -42384,7 +42384,7 @@ advance_expression = "attack_count == 4"
 xfade_time = 0.2
 switch_mode = 2
 advance_mode = 2
-advance_expression = "player_node.is_on_floor() == true"
+advance_expression = "fighter_node.is_on_floor() == true"
 
 [sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_huy17"]
 state_machine_type = 1
@@ -42451,7 +42451,7 @@ advance_expression = "attack_count == 4"
 xfade_time = 0.2
 switch_mode = 2
 advance_mode = 2
-advance_expression = "player_node.is_on_floor() == true"
+advance_expression = "fighter_node.is_on_floor() == true"
 
 [sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_rsjr4"]
 states/End/position = Vector2(788, 221)
@@ -42518,7 +42518,7 @@ animation = &"MeleeLib/Roll"
 xfade_time = 0.1
 priority = 2
 advance_mode = 2
-advance_expression = "!player_node.input_dir"
+advance_expression = "!fighter_node.input_dir"
 
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_mj4gb"]
 xfade_time = 0.1
@@ -42528,7 +42528,7 @@ advance_mode = 2
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_tg2c3"]
 xfade_time = 0.1
 advance_mode = 2
-advance_expression = "player_node.input_dir"
+advance_expression = "fighter_node.input_dir"
 
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_20f3u"]
 xfade_time = 0.2
@@ -42561,7 +42561,7 @@ advance_mode = 2
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_e74ng"]
 xfade_time = 0.2
 advance_mode = 2
-advance_expression = "player_node.gadget_type == \"SHIELD\""
+advance_expression = "fighter_node.gadget_type == \"SHIELD\""
 
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_3lwww"]
 xfade_time = 0.2
@@ -42697,12 +42697,12 @@ animation = &"MeleeLib/UsePotion"
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_2nhvn"]
 xfade_time = 0.2
 advance_mode = 2
-advance_expression = "player_node.current_item.object_type == \"DRINK\""
+advance_expression = "fighter_node.current_item.object_type == \"DRINK\""
 
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_45hjl"]
 xfade_time = 0.2
 advance_mode = 2
-advance_expression = "player_node.current_item.object_type == \"THROWN\""
+advance_expression = "fighter_node.current_item.object_type == \"THROWN\""
 
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_hwb20"]
 xfade_time = 0.2
@@ -42716,7 +42716,7 @@ advance_mode = 2
 
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_8fb8e"]
 advance_mode = 2
-advance_expression = "player_node.current_item == null"
+advance_expression = "fighter_node.current_item == null"
 
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_85q11"]
 switch_mode = 2
@@ -42844,12 +42844,12 @@ advance_mode = 2
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_mg5jp"]
 xfade_time = 0.1
 advance_mode = 2
-advance_expression = "player_node.is_on_floor() == false"
+advance_expression = "fighter_node.is_on_floor() == false"
 
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_wp7dp"]
 xfade_time = 0.2
 advance_mode = 2
-advance_expression = "player_node.is_on_floor() == true"
+advance_expression = "fighter_node.is_on_floor() == true"
 
 [sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_begxi"]
 states/End/position = Vector2(684, 100)
@@ -42927,7 +42927,7 @@ advance_mode = 2
 
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_u3jui"]
 advance_mode = 2
-advance_expression = "player_node.current_state == player_node.state.FREE"
+advance_expression = "fighter_node.current_state == fighter_node.state.FREE"
 
 [sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_p5frc"]
 state_machine_type = 1
@@ -43029,12 +43029,12 @@ advance_mode = 2
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_g4an1"]
 xfade_time = 0.1
 advance_mode = 2
-advance_expression = "player_node.is_on_floor() == false"
+advance_expression = "fighter_node.is_on_floor() == false"
 
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_uste0"]
 xfade_time = 0.2
 advance_mode = 2
-advance_expression = "player_node.is_on_floor() == true"
+advance_expression = "fighter_node.is_on_floor() == true"
 
 [sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_6v4jq"]
 state_machine_type = 1
@@ -43060,12 +43060,12 @@ advance_mode = 2
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_pg7el"]
 xfade_time = 0.2
 advance_mode = 2
-advance_expression = "player_node.is_on_floor() == false"
+advance_expression = "fighter_node.is_on_floor() == false"
 
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_emayy"]
 xfade_time = 0.2
 advance_mode = 2
-advance_expression = "player_node.is_on_floor() == true"
+advance_expression = "fighter_node.is_on_floor() == true"
 
 [sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_8vt0w"]
 state_machine_type = 1
@@ -43107,7 +43107,7 @@ advance_mode = 2
 xfade_time = 0.1
 switch_mode = 2
 advance_mode = 2
-advance_expression = "player_node.current_state == player_node.state.FREE"
+advance_expression = "fighter_node.current_state == fighter_node.state.FREE"
 
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_paf03"]
 xfade_time = 0.2
@@ -43115,7 +43115,7 @@ xfade_time = 0.2
 [sub_resource type="AnimationNodeStateMachineTransition" id="AnimationNodeStateMachineTransition_ujfr2"]
 xfade_time = 0.2
 advance_mode = 2
-advance_expression = "player_node.current_state != player_node.state.SPRINT"
+advance_expression = "fighter_node.current_state != fighter_node.state.SPRINT"
 
 [sub_resource type="AnimationNodeStateMachine" id="AnimationNodeStateMachine_acwje"]
 states/Death/node = SubResource("AnimationNodeAnimation_rrfbm")
