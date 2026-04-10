@@ -39,17 +39,17 @@ mesh = SubResource("BoxMesh_floor")
 
 [node name="FighterA" parent="." instance=ExtResource("1_fighter_scene")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, 0)
-opponent = NodePath("../FighterB")
+opponent_path = NodePath("../FighterB")
 
 [node name="FighterB" parent="." instance=ExtResource("1_fighter_scene")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0)
-opponent = NodePath("../FighterA")
+opponent_path = NodePath("../FighterA")
 
 [node name="FighterCam" type="Camera3D" parent="."]
 script = ExtResource("3_fighter_cam_script")
 current = true
-fighter_a = NodePath("../FighterA")
-fighter_b = NodePath("../FighterB")
+fighter_a_path = NodePath("../FighterA")
+fighter_b_path = NodePath("../FighterB")
 
 [node name="PlayerBrain" type="Node" parent="FighterA"]
 script = ExtResource("2_player_brain_script")

@@ -32,10 +32,6 @@ window/size/viewport_height=1080
 
 project/assembly_name="SoulsGameTemplate"
 
-[editor_plugins]
-
-enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg", "res://addons/godotsteam/plugin.cfg", "res://addons/script-ide/plugin.cfg")
-
 [input]
 
 ui_select={
@@ -226,10 +222,3 @@ p0_sprint={
 3d_physics/layer_3="Targets"
 3d_physics/layer_4="Interactable"
 3d_physics/layer_5="Ladder"
-
-[steam]
-
-initialization/app_id=0
-initialization/initialize_on_startup=false
-initialization/embed_callbacks=false
-multiplayer_peer/max_channels=4

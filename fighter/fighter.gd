@@ -37,8 +37,13 @@ enum State {
 var current_state: int = State.STRAFING : set = _set_current_state
 
 # --- Exported references and tuning ---
-## The other fighter. Set in the editor on each Fighter instance in the demo.
-@export var opponent: Node3D
+## NodePath to the other fighter, resolved in _ready(). Set this in the
+## scene file (Godot does not auto-resolve typed Node3D exports from .tscn
+## NodePath strings, so we use an explicit NodePath + manual resolution).
+## Tests can still set `opponent` directly in code; the resolver only runs
+## when `opponent` is null.
+@export var opponent_path: NodePath
+var opponent: Node3D
 
 @export_group("Movement tuning")
 @export var default_speed: float = 4.0
@@ -53,6 +58,21 @@ var input_dir: Vector2 = Vector2.ZERO   # last value set by intent_move; X = str
 var sprint_held: bool = false           # last value set by intent_sprint
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
+
+# =========================================================================
+# Lifecycle
+# =========================================================================
+
+func _ready() -> void:
+	# Sibling node resolution — wait one frame so all peers in the parent
+	# scene have entered the tree before walking the path. The guard on
+	# `opponent` lets test code (and any future programmatic spawn) set
+	# the reference directly without being clobbered by path resolution.
+	if opponent != null or opponent_path.is_empty():
+		return
+	await get_tree().process_frame
+	if opponent == null:
+		opponent = get_node_or_null(opponent_path) as Node3D
 
 # =========================================================================
 # Intent surface (called by FighterBrain subclasses)

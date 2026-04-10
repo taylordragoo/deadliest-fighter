@@ -10,8 +10,14 @@ class_name FighterCam
 extends Camera3D
 
 # --- Tracked fighters ---
-@export var fighter_a: Node3D
-@export var fighter_b: Node3D
+## NodePaths to the two tracked fighters, resolved in _ready(). Use these
+## from the .tscn (Godot does not auto-resolve typed Node3D exports from
+## NodePath strings in scene files). Code can also set fighter_a/fighter_b
+## directly via set_fighters() — the resolver only runs when they're null.
+@export var fighter_a_path: NodePath
+@export var fighter_b_path: NodePath
+var fighter_a: Node3D
+var fighter_b: Node3D
 
 # --- Orbit tuning (starting values from the spec) ---
 @export_group("Orbit tuning")
@@ -30,13 +36,29 @@ var _cam_radius: float
 var _last_stable_line_yaw: float = 0.0
 
 func _ready() -> void:
-	_cam_radius = radius_base
-	# Seed _last_stable_line_yaw from initial positions if both are set,
-	# so the first frame has a sensible starting heading.
+	_cam_radius = radius_base  # fallback if no fighters wired
+
+	# Wait one frame so the sibling fighters have entered the tree before
+	# we walk the NodePaths. set_fighters() can also have been called from
+	# code, in which case we leave fighter_a/fighter_b alone.
+	await get_tree().process_frame
+	if fighter_a == null and not fighter_a_path.is_empty():
+		fighter_a = get_node_or_null(fighter_a_path) as Node3D
+	if fighter_b == null and not fighter_b_path.is_empty():
+		fighter_b = get_node_or_null(fighter_b_path) as Node3D
+
+	# Seed orbit state from the current fighter positions so the first
+	# rendered frame doesn't pop from radius_base to the real target_radius.
 	if fighter_a and fighter_b:
 		var line: Vector3 = fighter_b.global_position - fighter_a.global_position
-		if line.length() >= min_tracking_dist:
+		var dist: float = line.length()
+		if dist >= min_tracking_dist:
 			_last_stable_line_yaw = atan2(line.x, line.z)
+		_cam_radius = compute_target_radius(dist, radius_ratio, radius_base, min_radius, max_radius)
+		# Snap the camera into its computed orbit position immediately so
+		# the opening shot is properly framed instead of easing in over
+		# several frames from the world origin.
+		_update_orbit()
 
 func _physics_process(_delta: float) -> void:
 	if fighter_a == null or fighter_b == null:
