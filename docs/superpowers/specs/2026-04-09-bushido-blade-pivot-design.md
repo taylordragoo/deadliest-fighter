@@ -527,6 +527,55 @@ These are explicit known-unknowns, not things to pretend are solved.
 
 Local 2P; netplay; character select; multiple weapons / character classes; full AI subsystem; arena art direction; sound design and music; UI polish; rebindable controls; monetization; a name for the game. Each of these gets its own spec when the time comes.
 
+## Phase 2 Implementation Notes (2026-04-10)
+
+Phase 0–2 are complete. The following divergences from the original spec were discovered during implementation and are documented here so that Phase 3+ plans account for them.
+
+### State enum: kept souls states, not spec states
+
+The spec prescribes `SPAWN, STRAFING, SPRINTING, WINDING_UP, STRIKING, RECOVERING, PARRYING, DODGING, HURT, DEAD` and explicitly removes `STATIC_ACTION`/`DYNAMIC_ACTION`. The implementation keeps the souls template's state enum: `SPAWN, FREE, STATIC_ACTION, DYNAMIC_ACTION, DODGE, SPRINT, ATTACK`.
+
+**Why:** The forked animation tree's `advance_expression` strings, the action-phasing `await` chains (guard, parry, hurt, block, hard_landing), and the `set_strafe()`/`set_free_move()` branching all key off `STATIC_ACTION`/`DYNAMIC_ACTION`/`FREE`. Renaming to the spec's states would require rewriting ~15 advance_expressions in the serialized `.tscn` AnimationTree graph, plus all action methods. The cost is real; the benefit is naming clarity only.
+
+**Phase 3 impact:** The single `ATTACK` state currently lumps wind-up, active, and recovery into one timer-phased coroutine (the souls template pattern). Phase 3's sim-clock authoritative timing needs to split `ATTACK` into `WINDING_UP`, `STRIKING`, `RECOVERING` — either as new enum values alongside the existing ones, or by refactoring the enum entirely. The Phase 3 plan must decide which approach.
+
+### intent_strike signature simplified
+
+The spec prescribes `intent_strike(stance: Stance, dir: StrikeDir)`. The implementation uses `intent_strike()` with no parameters — it reads the current stance from `weapon_type` implicitly. `StrikeDir` does not exist yet.
+
+**Phase 3 impact:** When Strike resources are introduced, `intent_strike` will need a `dir` parameter (or the Strike lookup reads current stance + a default dir). The Phase 3 plan should define the final signature.
+
+### StanceSystem is inline, not a separate class
+
+The spec describes a dedicated `StanceSystem` node that owns stance transitions, `(stance, dir) → Strike` lookup, and stance-match logic for parries. The implementation puts stance logic directly on `FighterBody`: a `Stance` enum, a `STANCE_TO_WEAPON` dictionary, and `intent_change_stance()` that calls the animation tree's weapon-swap mechanism.
+
+**Phase 3 impact:** Phase 3 can either extract a `StanceSystem` class or keep the logic on `FighterBody`. The current inline approach is simple and works well for 2 stances. If stance transition rules become complex (change-cost timing, cripple-forced stance loss), extraction may be warranted.
+
+### Character mesh forward is +Z, not -Z
+
+The spec's yaw math assumed the standard Godot convention (character forward = `-Z`), which is why `_face_opponent` used `atan2(x, z) + PI`. The forked character mesh's visual forward is actually `+Z`. The `+ PI` offset was removed.
+
+**Impact on future code:** Any new code that computes facing yaw for this mesh should use `atan2(to_target.x, to_target.z)` without the `+ PI` offset. The `_freelook_rotate` quaternion slerp (used during sprint) also omits the offset and works correctly.
+
+### Dormant AnimationTree sub-graphs require shims
+
+The forked `fighter_body.tscn` contains serialized AnimationTree sub-graphs (Gadget, UseItem, Interacts) that are never entered at Phase 2 but whose `advance_expression` strings are evaluated by Godot during tree initialization. These expressions reference properties that were stripped during the fork.
+
+Shims added:
+- `FighterBody.gadget_type: String = "SHIELD"` — satisfies `fighter_node.gadget_type == "SHIELD"`
+- `FighterBody.current_item: ItemStub` (inner class with `object_type: String = "NONE"`) — satisfies `fighter_node.current_item.object_type == "DRINK"` / `"THROWN"` / `== null`
+- `FighterAnimationTree.interact_type: String = "GENERIC"` — satisfies `interact_type == "GENERIC"` (resolves against the tree script, not fighter_node)
+
+These shims can be removed if/when the dormant sub-graphs are pruned from the AnimationTree resource itself (requires manual AnimationTree graph editing in Godot).
+
+### animation_measured race condition in _ready()
+
+The original plan's `_ready()` used `await get_tree().process_frame` for sibling opponent resolution before awaiting `anim_state_tree.animation_measured`. This introduced a 1-frame window during which the AnimationTree would fire `animation_measured` (from its first animation starting), causing the subsequent await to hang forever.
+
+**Fix:** Opponent resolution is now synchronous (`get_node_or_null()` without frame skip). Siblings are already in the tree when `_ready()` runs in Godot 4 (children are added depth-first before any `_ready` fires).
+
+**Lesson for future phases:** Avoid `await` before signal-awaits in `_ready()` — any intermediate frame skip risks missing signals that fire during tree initialization.
+
 ## Status
 
-Design sections 1–6 approved by the user. Next step: `superpowers:writing-plans` skill to produce an implementation plan, starting from Phase 0 of the build plan.
+Phases 0–2 complete. Phase 2 gate passed (2026-04-10): two rigged fighters with stance-switching, striking, strafing, sprint break-lock, and midpoint-orbit camera. Next step: Phase 3 plan (Strike resources + sim-clock timing).
