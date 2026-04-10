@@ -13,19 +13,37 @@ var _move_down: StringName
 var _move_left: StringName
 var _move_right: StringName
 var _sprint: StringName
+var _stance_upper: StringName
+var _strike: StringName
 
 func _ready() -> void:
 	super._ready()
 	var p := "p%d_" % player_index
-	_move_up    = StringName(p + "move_up")
-	_move_down  = StringName(p + "move_down")
-	_move_left  = StringName(p + "move_left")
-	_move_right = StringName(p + "move_right")
-	_sprint     = StringName(p + "sprint")
+	_move_up      = StringName(p + "move_up")
+	_move_down    = StringName(p + "move_down")
+	_move_left    = StringName(p + "move_left")
+	_move_right   = StringName(p + "move_right")
+	_sprint       = StringName(p + "sprint")
+	_stance_upper = StringName(p + "stance_upper")
+	_strike       = StringName(p + "strike")
 
 func _physics_process(_delta: float) -> void:
 	if fighter == null:
 		return
+
+	# Movement (continuous)
 	var move := Input.get_vector(_move_left, _move_right, _move_up, _move_down)
 	fighter.intent_move(move)
+
+	# Sprint (continuous)
 	fighter.intent_sprint(Input.is_action_pressed(_sprint))
+
+	# Stance (continuous: held = UPPER, released = MIDDLE)
+	if Input.is_action_pressed(_stance_upper):
+		fighter.intent_change_stance(FighterBody.Stance.UPPER)
+	else:
+		fighter.intent_change_stance(FighterBody.Stance.MIDDLE)
+
+	# Strike (rising edge)
+	if Input.is_action_just_pressed(_strike):
+		fighter.intent_strike()
