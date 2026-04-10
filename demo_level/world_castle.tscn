@@ -1,18 +1,18 @@
-[gd_scene load_steps=24 format=3 uid="uid://uiw1spc0mevb"]
+[gd_scene format=3 uid="uid://uiw1spc0mevb"]
 
 [ext_resource type="PackedScene" uid="uid://dn8mn12kaey87" path="res://player/character_body_souls_base.tscn" id="1_70e33"]
 [ext_resource type="PackedScene" uid="uid://cnv210lnfdoan" path="res://interactable objects/doors/door_object.tscn" id="2_4fq4l"]
 [ext_resource type="PackedScene" uid="uid://bp5aql2ip2qwi" path="res://interactable objects/doors/gate_object.tscn" id="3_0mbes"]
 [ext_resource type="PackedScene" uid="uid://cda0r3gahfvhp" path="res://interactable objects/ladders/ladder_object.tscn" id="4_a4kod"]
 [ext_resource type="PackedScene" uid="uid://c3yajhej5laa7" path="res://interactable objects/chest/chest.tscn" id="5_b73po"]
-[ext_resource type="Script" path="res://enemy/patrol_point.gd" id="6_i73lt"]
+[ext_resource type="Script" uid="uid://bs7mjwi7x4uda" path="res://enemy/patrol_point.gd" id="6_i73lt"]
 [ext_resource type="PackedScene" uid="uid://bbhrq4snasi1i" path="res://demo_level/stagingCSG.tscn" id="7_p8o0k"]
 [ext_resource type="PackedScene" uid="uid://dydcpd450p5ig" path="res://enemy/CharacterBodyEnemyBase.tscn" id="8_3w8s6"]
 [ext_resource type="PackedScene" uid="uid://daae7mgofoegu" path="res://interactable objects/spawn_site/spawn_site.tscn" id="9_cpxbt"]
 [ext_resource type="PackedScene" uid="uid://cev0hfdkmno27" path="res://interactable objects/lever/lever_object.tscn" id="10_10w6y"]
-[ext_resource type="Script" path="res://ui/control_card.gd" id="11_4norq"]
+[ext_resource type="Script" uid="uid://bp1k0pddqcopg" path="res://ui/control_card.gd" id="11_4norq"]
 [ext_resource type="Texture2D" uid="uid://c46nfvbeeb3pr" path="res://ui/panel-border-027.png" id="12_1f7l8"]
-[ext_resource type="Script" path="res://cameras/area_cam/area_cam.gd" id="13_2aall"]
+[ext_resource type="Script" uid="uid://i4rgbsv5nvy" path="res://cameras/area_cam/area_cam.gd" id="13_2aall"]
 [ext_resource type="AudioStream" uid="uid://ddfdcmyfdq6fi" path="res://audio/bone_in_the_walls__level_loop_session.ogg" id="14_wsft0"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_wiiwu"]
@@ -64,99 +64,100 @@ width = 8
 [sub_resource type="BoxShape3D" id="BoxShape3D_m6vf8"]
 size = Vector3(7.74271, 3, 11.8024)
 
-[node name="World" type="Node3D"]
+[node name="World" type="Node3D" unique_id=277304868]
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=866009843]
 environment = SubResource("Environment_eed6x")
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=2094260081]
 transform = Transform3D(-0.94088, 0.275772, -0.196706, 0, 0.580703, 0.814115, 0.338738, 0.765985, -0.546372, 0, 0, 0)
 light_energy = 0.09
 shadow_enabled = true
 sky_mode = 1
 
-[node name="DirectionalLight3D2" type="DirectionalLight3D" parent="."]
+[node name="DirectionalLight3D2" type="DirectionalLight3D" parent="." unique_id=1017931967]
 transform = Transform3D(0.267238, 0.337471, -0.902606, 0, 0.936672, 0.350207, 0.96363, -0.0935888, 0.250315, -2.974, 0.187, 4.334)
 light_color = Color(0.345098, 0.160784, 0.0784314, 1)
 light_energy = 5.356
 light_angular_distance = 2.0
 
-[node name="PlayerCharacterBodySoulsBase" parent="." node_paths=PackedStringArray("last_spawn_site") instance=ExtResource("1_70e33")]
+[node name="PlayerCharacterBodySoulsBase" parent="." unique_id=1420249898 node_paths=PackedStringArray("last_spawn_site") instance=ExtResource("1_70e33")]
 transform = Transform3D(-0.800146, 0, -0.599806, 0, 1, 0, 0.599806, 0, -0.800146, -9.61981, 2.38419e-07, -0.909899)
 last_spawn_site = NodePath("../SpawnSite")
 
-[node name="DoorObject" parent="." instance=ExtResource("2_4fq4l")]
+[node name="DoorObject" parent="." unique_id=919267681 instance=ExtResource("2_4fq4l")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -1.94139, 0, 23.7356)
 
-[node name="GateObject" parent="." instance=ExtResource("3_0mbes")]
+[node name="GateObject" parent="." unique_id=2091455777 instance=ExtResource("3_0mbes")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.03717, 0, 12.3254)
 
-[node name="Ladder" parent="." instance=ExtResource("4_a4kod")]
+[node name="Ladder" parent="." unique_id=110576404 instance=ExtResource("4_a4kod")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -30.634, -0.1, 15.4212)
 
-[node name="ChestObject" parent="." instance=ExtResource("5_b73po")]
+[node name="ChestObject" parent="." unique_id=645836708 instance=ExtResource("5_b73po")]
 transform = Transform3D(-0.617585, 0, 0.786504, 0, 1, 0, -0.786504, 0, -0.617585, -45.2577, 3.8271, 19.2007)
 
-[node name="ChestObject2" parent="." instance=ExtResource("5_b73po")]
+[node name="ChestObject2" parent="." unique_id=1273316456 instance=ExtResource("5_b73po")]
 transform = Transform3D(0.999631, 0, -0.0271716, 0, 1, 0, 0.0271716, 0, 0.999631, -38.9396, 3.8271, 6.05781)
 
-[node name="ChestObject3" parent="." instance=ExtResource("5_b73po")]
+[node name="ChestObject3" parent="." unique_id=667250166 instance=ExtResource("5_b73po")]
 transform = Transform3D(-0.998275, 0, 0.0586963, 0, 1, 0, -0.0586963, 0, -0.998275, -40.0676, 3.81445, 24.3613)
 
-[node name="Ladder2" parent="." instance=ExtResource("4_a4kod")]
+[node name="Ladder2" parent="." unique_id=579067872 instance=ExtResource("4_a4kod")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -14.6634, -0.477839, 30.7756)
 
-[node name="PatrolPath" type="Path3D" parent="."]
+[node name="PatrolPath" type="Path3D" parent="." unique_id=669431436]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.4471, 0, 30.6534)
 curve = SubResource("Curve3D_2c2rs")
 
-[node name="EnemyPatrolPoint" type="PathFollow3D" parent="PatrolPath"]
-transform = Transform3D(0.999741, 0, -0.0225166, 0, 1, 0, 0.0225166, 0, 0.999741, -0.43294, 0, -0.97773)
+[node name="EnemyPatrolPoint" type="PathFollow3D" parent="PatrolPath" unique_id=1226487683]
+transform = Transform3D(0.9997409, 0, -0.022516575, 0, 1, 0, 0.022516575, 0, 0.9997409, -0.43294, 0, -0.97773)
 script = ExtResource("6_i73lt")
 
-[node name="NavigationRegion3D" type="NavigationRegion3D" parent="."]
+[node name="NavigationRegion3D" type="NavigationRegion3D" parent="." unique_id=1062651249]
 navigation_mesh = SubResource("NavigationMesh_8axki")
 
-[node name="Staging" parent="NavigationRegion3D" instance=ExtResource("7_p8o0k")]
+[node name="Staging" parent="NavigationRegion3D" unique_id=311995944 instance=ExtResource("7_p8o0k")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.017047048, 0.049262404, 0.029522657)
 
-[node name="CharacterBodyEnemyBase" parent="." node_paths=PackedStringArray("default_target") instance=ExtResource("8_3w8s6")]
+[node name="CharacterBodyEnemyBase" parent="." unique_id=1089725246 node_paths=PackedStringArray("default_target") instance=ExtResource("8_3w8s6")]
 transform = Transform3D(-2.06632e-07, 0, 1, 0, 1, 0, -1, 0, -2.06632e-07, -10.4693, -4.76837e-07, 23.7447)
 default_target = NodePath("../PatrolPath/EnemyPatrolPoint")
 
-[node name="CharacterBodyEnemyBase4" parent="." instance=ExtResource("8_3w8s6")]
+[node name="CharacterBodyEnemyBase4" parent="." unique_id=430476495 instance=ExtResource("8_3w8s6")]
 transform = Transform3D(2.98023e-08, 0, 1, 0, 1, 0, -1, 0, 2.98023e-08, -1.23949, -4.76837e-07, 23.9472)
 
-[node name="CharacterBodyEnemyBase2" parent="." instance=ExtResource("8_3w8s6")]
+[node name="CharacterBodyEnemyBase2" parent="." unique_id=1927594810 instance=ExtResource("8_3w8s6")]
 transform = Transform3D(-0.518131, 0, 0.855301, 0, 1, 0, -0.855301, 0, -0.518131, -35.9215, 3.8271, 16.6378)
 
-[node name="CharacterBodyEnemyBase3" parent="." instance=ExtResource("8_3w8s6")]
+[node name="CharacterBodyEnemyBase3" parent="." unique_id=1789616550 instance=ExtResource("8_3w8s6")]
 transform = Transform3D(0.566751, 0, 0.823889, 0, 1, 0, -0.823889, 0, 0.566751, -36.0567, 3.8271, 14.7454)
 
-[node name="SpawnSite" parent="." instance=ExtResource("9_cpxbt")]
+[node name="SpawnSite" parent="." unique_id=219731233 instance=ExtResource("9_cpxbt")]
 transform = Transform3D(0.996195, 0, 0.0871556, 0, 1, 0, -0.0871556, 0, 0.996195, -5.55901, 0, 4.05321)
 reset_level = true
 
-[node name="DoorObject2" parent="." instance=ExtResource("2_4fq4l")]
+[node name="DoorObject2" parent="." unique_id=2134875696 instance=ExtResource("2_4fq4l")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -23.9496, 0.0296541, 17.5979)
 locked = true
 
-[node name="LeverObject" parent="." node_paths=PackedStringArray("node_to_control") instance=ExtResource("10_10w6y")]
+[node name="LeverObject" parent="." unique_id=182993725 node_paths=PackedStringArray("node_to_control") instance=ExtResource("10_10w6y")]
 transform = Transform3D(-0.0871557, 0, 0.996195, 0, 1, 0, -0.996195, 0, -0.0871557, -20.3826, 2.38419e-07, 3.39331)
 node_to_control = NodePath("../DoorObject2")
 
-[node name="CharacterBodyEnemyBase5" parent="." node_paths=PackedStringArray("default_target") instance=ExtResource("8_3w8s6")]
+[node name="CharacterBodyEnemyBase5" parent="." unique_id=1757095222 node_paths=PackedStringArray("default_target") instance=ExtResource("8_3w8s6")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -45.5802, 3.8271, 13.8269)
 default_target = NodePath("../PatrolArea2/PatrolPoint2")
 
-[node name="PatrolArea2" type="Path3D" parent="."]
+[node name="PatrolArea2" type="Path3D" parent="." unique_id=1285537237]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -42.8878, 3.9, 15.5108)
 curve = SubResource("Curve3D_h7gp6")
 
-[node name="PatrolPoint2" type="PathFollow3D" parent="PatrolArea2"]
-transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -1.53429, 2.81334e-05, 6.36466)
+[node name="PatrolPoint2" type="PathFollow3D" parent="PatrolArea2" unique_id=112413968]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -1.53429, 2.81334e-05, 6.36466)
 script = ExtResource("6_i73lt")
 
-[node name="ControlCard" type="Control" parent="."]
+[node name="ControlCard" type="Control" parent="." unique_id=976777012]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -165,7 +166,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("11_4norq")
 
-[node name="NinePatchRect" type="NinePatchRect" parent="ControlCard"]
+[node name="NinePatchRect" type="NinePatchRect" parent="ControlCard" unique_id=178069914]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -186,7 +187,7 @@ patch_margin_bottom = 16
 axis_stretch_horizontal = 1
 axis_stretch_vertical = 1
 
-[node name="TextureRect" type="TextureRect" parent="ControlCard/NinePatchRect"]
+[node name="TextureRect" type="TextureRect" parent="ControlCard/NinePatchRect" unique_id=1985919289]
 show_behind_parent = true
 layout_mode = 1
 anchors_preset = 15
@@ -196,7 +197,7 @@ grow_horizontal = 2
 grow_vertical = 2
 texture = SubResource("GradientTexture1D_6jfgq")
 
-[node name="MarginContainer" type="MarginContainer" parent="ControlCard"]
+[node name="MarginContainer" type="MarginContainer" parent="ControlCard" unique_id=182986415]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -214,7 +215,7 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 8
 
-[node name="ControlCardLabel" type="Label" parent="ControlCard/MarginContainer"]
+[node name="ControlCardLabel" type="Label" parent="ControlCard/MarginContainer" unique_id=430187399]
 custom_minimum_size = Vector2(21.07, 17.23)
 layout_mode = 2
 text = "WASD / L Joystick = Movement
@@ -238,25 +239,25 @@ F / Circle = X
 SpaceBar / Circle = Dodge
 Hold SpaceBar/Circle = Sprint"
 
-[node name="WorldEnvironment2" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment2" type="WorldEnvironment" parent="." unique_id=2023067779]
 environment = SubResource("Environment_eed6x")
 
-[node name="AreaCam" type="Area3D" parent="."]
+[node name="AreaCam" type="Area3D" parent="." unique_id=324302141]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16.1214, 1.19209e-07, -0.0681903)
 collision_layer = 0
 collision_mask = 2
 script = ExtResource("13_2aall")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="AreaCam"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="AreaCam" unique_id=1153727840]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.23262, 1, 2.59018)
 shape = SubResource("BoxShape3D_m6vf8")
 
-[node name="Pivot" type="Marker3D" parent="AreaCam"]
+[node name="Pivot" type="Marker3D" parent="AreaCam" unique_id=752244557]
 
-[node name="Camera3D" type="Camera3D" parent="AreaCam/Pivot"]
+[node name="Camera3D" type="Camera3D" parent="AreaCam/Pivot" unique_id=1731590314]
 transform = Transform3D(-0.894935, -0.0116801, 0.446045, 0, 0.999658, 0.0261769, -0.446198, 0.0234267, -0.894627, 0.39, 2.64, -2.37)
 
-[node name="Music" type="AudioStreamPlayer" parent="."]
+[node name="Music" type="AudioStreamPlayer" parent="." unique_id=1328384651]
 stream = ExtResource("14_wsft0")
 volume_db = -18.0
 autoplay = true

@@ -1,3 +1,20 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Language              Files        Lines         Code     Comments       Blanks
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Forge Config              1            7            6            0            1
+ GDScript                 56         7188         5016          845         1327
+ JavaScript                1           82           51           17           14
+ ReScript                  1         5475         3175         2284           16
+ SVG                       1            1            1            0            0
+─────────────────────────────────────────────────────────────────────────────────
+ Markdown                  4         1636            0         1101          535
+ |- BASH                   1           44           43            1            0
+ |- GDScript               2          619          426          120           73
+ (Total)                             2299          469         1222          608
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Total                    64        15052         8718         4368         1966
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 Directory structure:
 └── deadliest-fighter/
     ├── README.md
@@ -145,9 +162,9 @@ This template uses assets created entirely by myself, or from Kenney Assets. Not
 The accumulation of about a years worth of testing. It features a lot of the classic mechanics for soulslike games:
 
 - Primary weapon
-- Offhand gadgets 
+- Offhand gadgets
 - Consumable items
-- Enemy targeting 
+- Enemy targeting
 - Blocking / perfect parry
 - Dodge rolling
 - Sprinting
@@ -1085,7 +1102,7 @@ FILE: audio/SoundFXSystem.gd
 extends AudioStreamPlayer3D
 class_name SoundFXTrigger
 
-## Takes a node, and a signal string. When the signal is emitted by the 
+## Takes a node, and a signal string. When the signal is emitted by the
 ## triggering node, this stream  will shuffle its pitch and play. Useful
 ## for making footsteps, sword hits, etc less monotonous.
 
@@ -1096,7 +1113,7 @@ func _ready():
 	if triggering_node:
 		if triggering_node.has_signal(sound_trigger_signal):
 			triggering_node.connect(sound_trigger_signal,_on_sound_trigger_signal)
-	
+
 func _on_sound_trigger_signal(_1 = null):
 	if !playing:
 		#pitch_scale = randf_range(.8,1.1)
@@ -1110,7 +1127,7 @@ FILE: audio/SoundFXSystemV1.gd
 extends AudioStreamPlayer3D
 class_name SoundFXTrigger2
 
-@export var sound_1 : AudioStream 
+@export var sound_1 : AudioStream
 @export var sound_2 : AudioStream
 @onready var new_stream = sound_1
 
@@ -1123,9 +1140,9 @@ func _ready():
 		triggering_node.connect(sound_1_signal,_on_sound_1_signal)
 	if triggering_node.has_signal(sound_2_signal):
 		triggering_node.connect(sound_2_signal,_on_sound_2_signal)
-	
+
 	new_stream = sound_1
-	
+
 func _on_sound_1_signal(_1 = null):
 	if !playing:
 		new_stream = sound_1
@@ -1148,7 +1165,7 @@ FILE: cameras/area_cam/area_cam.gd
 extends Area3D
 
 ## This node can use a built in camera or use one you've determined
-## The builtin camera will queue_free at runtime if a new camera is used. 
+## The builtin camera will queue_free at runtime if a new camera is used.
 @export var camera_3d : Camera3D
 @onready var builtin : Camera3D = $Pivot/Camera3D
 
@@ -1158,7 +1175,7 @@ func _ready():
 		builtin.queue_free()
 	else:
 		camera_3d = builtin
-	 
+
 	body_entered.connect(_add_cam)
 	body_exited.connect(_drop_cam)
 
@@ -1224,9 +1241,9 @@ FILE: cameras/follow_cam/follow_cam_3d.gd
 extends SpringArm3D
 class_name FollowCam
 
-## Will follow the global_position of the follow_target and rotate based on 
+## Will follow the global_position of the follow_target and rotate based on
 ## mouse or joystick input. If an optional targeting system is added and
-## "targeting == true", this node will constantly look at a "look_target", 
+## "targeting == true", this node will constantly look at a "look_target",
 ## ignoring mouse movement.
 
 ## By toggling targeting to false, the camera will return to normal control.
@@ -1244,12 +1261,12 @@ class_name FollowCam
 
 var targeting = false
 signal targeting_changed
-@export var camera_3d : Camera3D 
+@export var camera_3d : Camera3D
 @export var follow_target : Node3D
 @onready var default_spring :float = spring_length
 
 ## if no target is set, this node will attempt to find a CharacterBody3D to follow
-var look_target : Node3D 
+var look_target : Node3D
 @onready var vertical_offset = global_position.y
 @export var optional_targeting_system : Node
 
@@ -1261,7 +1278,7 @@ var current_cam_buffer = true
 
 func _ready():
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-			
+
 	if follow_target.has_signal("strafe_toggled"): ## to avoid hard coding using a SignalSwitch
 		follow_target.strafe_toggled.connect(_on_strafe_toggled)
 	if follow_target.has_method("_on_target_cleared"):
@@ -1269,21 +1286,21 @@ func _ready():
 	#
 	if optional_targeting_system:
 		optional_targeting_system.target_found.connect(_on_target_found)
-		
+
 	if camera_3d:
 		camera_3d.current = true
-	
+
 	target_cleared.connect(_on_target_cleared)
-	
+
 func _input(event):
 	mouse_control(event)
-	
+
 func _physics_process(_delta):
 	joystick_control() # run in physics processr ather than event for smoother action
 	_follow_target(follow_target)
 	_lookat_target()
 	_detect_camera_change()
-	
+
 ## Normal free camera control
 func mouse_control(_event):
 
@@ -1302,7 +1319,7 @@ func joystick_control(): # For controlling freecam rotation on gamepad
 	var joy_input = Input.get_vector("look_left","look_right","look_up","look_down")
 	var temporary_rotation = rotation.x + joy_input.y / 400 * joystick_sensitivity
 	rotation.y -= joy_input.x / 300 * joystick_sensitivity
-	
+
 	var clamped_rotation = clamp(temporary_rotation, -.8, .8)
 	rotation.x = clamped_rotation
 
@@ -1314,7 +1331,7 @@ func _detect_camera_change():
 	&& current_cam_buffer == false:
 		global_rotation.y = follow_target.global_rotation.y + PI
 		current_cam_buffer = true
-	
+
 func _follow_target(new_target):
 	if new_target:
 		var target_position = new_target.global_position
@@ -1330,19 +1347,19 @@ func _on_strafe_toggled(_toggle):
 	targeting_changed.emit(targeting)
 	if targeting == false:
 		target_cleared.emit()
-	
+
 func _on_target_found(new_target):
 	if new_target:
 		look_target = new_target
-		
+
 func _lookat_target():
 	if look_target: # needed to make sure you don't try to target a freed node.
 		#if look_target.is_queued_for_deletion():
 		if !look_target.is_in_group("Targets"):
 			target_cleared.emit()
-			
+
 	if targeting: # otherwise track the target
-		if look_target: 
+		if look_target:
 			var vertical_look_offset = Vector3(0,.7,0) ## to not look at the target's feet.
 			look_at(look_target.global_position + vertical_look_offset ,Vector3.UP)
 
@@ -3055,7 +3072,7 @@ signal animation_measured
 @onready var last_velocity
 
 func _ready():
-	
+
 	if player_node:
 		player_node.parried_started.connect(_on_parry_started)
 		player_node.hurt_started.connect(_on_hurt_started)
@@ -3064,7 +3081,7 @@ func _ready():
 		player_node.death_started.connect(_on_death_started)
 func _process(_delta):
 		set_movement()
-	
+
 func _on_state_changed(_new_state):
 	current_state = _new_state
 
@@ -3075,7 +3092,7 @@ func _on_attack_started():
 func _on_parry_started():
 	abort_oneshot(last_oneshot)
 	request_oneshot("Parried")
-	
+
 func _on_hurt_started(): ## Picks a hurt animation between "Hurt1" and "Hurt2"
 	abort_oneshot(last_oneshot)
 	hurt_count = randi_range(1,2)
@@ -3083,33 +3100,33 @@ func _on_hurt_started(): ## Picks a hurt animation between "Hurt1" and "Hurt2"
 
 func _on_death_started():
 	abort_oneshot(last_oneshot)
-		
+
 func request_oneshot(oneshot:String):
 	last_oneshot = oneshot
 	set("parameters/" + oneshot + "/request",true)
-	
+
 func abort_oneshot(oneshot):
 	set("parameters/"+ str(oneshot) + "/request",AnimationNodeOneShot.ONE_SHOT_REQUEST_ABORT)
 
 func set_movement():
 	if player_node.retreating:
 		smooth_walk_blend1(-.5)
-	
+
 	elif abs(player_node.velocity.x) + abs(player_node.velocity.z) < .1:  ## not moving
-		
+
 		smooth_walk_blend1(0.0)
-	
+
 	else: ## we can assume they're moving now
 		if player_node.speed == player_node.walk_speed:
 			smooth_walk_blend1(.5)
 		elif player_node.speed == player_node.run_speed:
 			smooth_walk_blend1(1.0)
-	
+
 	last_velocity = player_node.velocity
-	
-	
+
+
 func smooth_walk_blend1(_new_target: float):
-	
+
 	var lerp_movement = float(get("parameters/MovementStates/MovementStates/blend_position"))
 	lerp_movement = lerp(lerp_movement,_new_target,.2)
 	set("parameters/MovementStates/MovementStates/blend_position",lerp_movement)
@@ -3126,12 +3143,12 @@ FILE: enemy/AreaEnemyTargetSensor.gd
 extends Area3D
 class_name AreaEnemyTargetSensor
 
-## The Aread3D scans for the target group in the physics detection layer. 
+## The Aread3D scans for the target group in the physics detection layer.
 ## if an object enters, the eyeline repeately checks if it can see the potential
 ## target. If it succeeds, a 'target_spotted' signal emits. Connect wherever
 ## useful, for example, into navegation code to persue the player.
 
-@export var player_node : CharacterBody3D 
+@export var player_node : CharacterBody3D
 @onready var eyeline : RayCast3D = $Eyeline
 @export var target_group_name : String = "Player"
 @export_flags_3d_physics var dectection_layer_mask
@@ -3177,7 +3194,7 @@ func _on_body_exited(_body):
 
 func _on_chase_ended():
 	potential_target = null
-	
+
 func _on_check_interval_timeout():
 	eyeline_check()
 
@@ -3226,10 +3243,10 @@ class_name CharacterBodyEnemyBase
 ## Group names are used to detect enemies (along with their physics layer)
 @export var group_name :String = "Targets"
 
-@export var anim_state_tree :AnimationTree 
+@export var anim_state_tree :AnimationTree
 @onready var anim_length
 
-@export var target_sensor : Area3D 
+@export var target_sensor : Area3D
 @onready var target : set = set_target
 ## Use for pathfinding, it will return to following this default target after
 ## giving up a chase. Most commonly this is a pathfollow node, following a Path.
@@ -3305,33 +3322,33 @@ func update_current_state(_new_state):
 			state.DEAD:
 				speed = 0.0
 		state_changed.emit(_new_state)
-			
+
 func _ready() -> void:
 
 	add_to_group(group_name,true)
 	set_default_target()
-	
+
 	combat_timer.one_shot = true
 	combat_timer.wait_time = attack_cooldown_time
 	combat_timer.timeout.connect(_on_combat_timer_timeout)
 	add_child(combat_timer)
-	
+
 	chase_timer.one_shot = true
 	chase_timer.timeout.connect(_on_chase_timer_timeout)
 	chase_timer.wait_time = chase_time
 	add_child(chase_timer)
-	
+
 	if target_sensor:
 		target_sensor.target_spotted.connect(_on_target_spotted)
 		target_sensor.target_lost.connect(_on_target_lost)
-		
+
 	if anim_state_tree:
 		anim_state_tree.animation_measured.connect(_on_animation_measured)
-	
+
 	if health_system:
 		health_system.died.connect(death)
-		
-		
+
+
 func _physics_process(_delta):
 	apply_gravity(_delta)
 	if is_on_floor():
@@ -3352,18 +3369,18 @@ func _physics_process(_delta):
 				chase_or_fight()
 			state.ATTACK:
 				free_movement()
-			
+
 			state.DYNAMIC_ACTION:
 				pass
 
-func set_target(_new_target): 
+func set_target(_new_target):
 	target = _new_target
 	if current_state != state.ATTACK:
 		if target != default_target:
 			current_state = state.CHASE
 		else:
 			current_state = state.FREE
-	
+
 func _on_target_spotted(_spotted_target): # Updates from a TargetSensor if a target is found.
 	if target != _spotted_target:
 		target = _spotted_target
@@ -3376,7 +3393,7 @@ func _on_target_lost():
 
 func _on_chase_timer_timeout():
 	give_up()
-	
+
 func give_up():
 	current_state = state.DYNAMIC_ACTION
 	speed = 0.0
@@ -3384,31 +3401,31 @@ func give_up():
 	await get_tree().create_timer(2).timeout
 	if !is_instance_valid(self) || current_state == state.DEAD: return
 	target = default_target
-	
+
 func apply_gravity(_delta):
 	if !is_on_floor():
 		velocity.y -= gravity * _delta
 		move_and_slide()
-		
+
 func navigation():
 	if target:
 		navigation_agent_3d.target_position = target.global_position
 		var new_dir = (navigation_agent_3d.get_next_path_position() - global_position).normalized()
 		new_dir *= Vector3(1,0,1) # strip the y value so enemy stays at currentt level
 		direction = new_dir
-		
+
 func free_movement():
 	var rate = .1
 	velocity.x = move_toward(velocity.x, direction.x * speed, rate)
 	velocity.z = move_toward(velocity.z, direction.z * speed, rate)
 	# required in the process function states for dodges/dashes
 	move_and_slide()
-	
+
 func rotate_character():
 		var lookdirection = global_position.direction_to(navigation_agent_3d.get_next_path_position())
 		rotation.y = lerp_angle(rotation.y, atan2(lookdirection.x, lookdirection.z), turn_speed)
 
-func set_default_target(): ## Creates a node to return to after patrolling if 
+func set_default_target(): ## Creates a node to return to after patrolling if
 	## no default target is set.
 	add_child(spawn_location)
 	spawn_location.top_level = true
@@ -3432,7 +3449,7 @@ func reset_attack_clock():
 	if current_state == state.COMBAT:
 		if combat_timer.is_stopped():
 			combat_timer.start()
-			
+
 func combat_randomizer():
 	var random_choice = randi_range(1,10)
 	if random_choice <= 3:
@@ -3444,7 +3461,7 @@ func attack():
 	current_state = state.ATTACK
 	anim_length = .5
 	attack_started.emit()
-	if anim_state_tree: 
+	if anim_state_tree:
 		await anim_state_tree.animation_measured
 	await get_tree().create_timer(anim_length *.4).timeout
 	if !is_instance_valid(self) || current_state == state.DEAD: return
@@ -3454,8 +3471,8 @@ func attack():
 	if !is_instance_valid(self) || current_state == state.DEAD: return
 	if current_state == state.ATTACK:
 		current_state = state.CHASE
-	
-	
+
+
 func retreat():
 	var retreat_duration = 1.0
 	retreating = true
@@ -3466,8 +3483,8 @@ func retreat():
 	retreating = false
 	if current_state != state.DEAD:
 		current_state = state.CHASE
-	
-#func dash(_new_direction : Vector3 = Vector3.FORWARD): 
+
+#func dash(_new_direction : Vector3 = Vector3.FORWARD):
 	## burst of speed toward indicated direction, or forward by default
 	#speed = dash_speed
 	#direction = (global_position - to_global(_new_direction)).normalized()
@@ -3475,8 +3492,8 @@ func retreat():
 	#await get_tree().create_timer(dash_duration).timeout
 	#speed = 0.0
 	#velocity = direction * speed
-	
-func dash(_new_direction : Vector3 = Vector3.FORWARD, _duration = .1): 
+
+func dash(_new_direction : Vector3 = Vector3.FORWARD, _duration = .1):
 	speed = dash_speed
 	if _new_direction:
 		direction = (global_position - to_global(_new_direction)).normalized()
@@ -3484,7 +3501,7 @@ func dash(_new_direction : Vector3 = Vector3.FORWARD, _duration = .1):
 	if !is_instance_valid(self) || current_state == state.DEAD: return
 	speed = 0.0
 	direction = Vector3.ZERO
-	
+
 
 func _on_animation_measured(_new_length):
 	anim_length = _new_length - .05 # offset slightly for the process frame
@@ -3510,7 +3527,7 @@ func hit(_by_who, _by_what):
 			current_state = state.CHASE
 		combat_timer.start()
 
-	
+
 func parried():
 	combat_timer.stop()
 	current_state = state.DYNAMIC_ACTION
@@ -3539,7 +3556,7 @@ func death():
 func apply_ragdoll():
 	general_skeleton.physical_bones_start_simulation()
 	anim_state_tree.active = false
-	
+
 	await get_tree().create_timer(3).timeout
 	if !is_instance_valid(self): return
 	var bone_transforms = []
@@ -44684,7 +44701,7 @@ func _ready():
 	if heal_reporting_node:
 		if heal_reporting_node.has_signal(heal_signal):
 			heal_reporting_node.connect(heal_signal,_on_health_signal)
-			
+
 	if health_bar_control:
 		health_bar_control.hide()
 		show_timer = Timer.new()
@@ -44692,12 +44709,12 @@ func _ready():
 		show_timer.wait_time = show_time
 		show_timer.timeout.connect(_on_show_timer_timeout)
 		add_child(show_timer)
-		
+
 func _physics_process(_delta):
 	if show_timer:
 		if show_timer.time_left:
 			show_health()
-		
+
 func _on_damage_signal(_by_what):
 	if health_bar_control:
 		show_timer.start()
@@ -44715,11 +44732,11 @@ func _on_health_signal(_by_what):
 	if current_health > total_health:
 		current_health = total_health
 	health_updated.emit(current_health)
-	
+
 func show_health():
 	var current_camera = get_viewport().get_camera_3d()
 	var screenspace = current_camera.unproject_position(hit_reporting_node.global_position)
-	health_bar_control.position = screenspace 
+	health_bar_control.position = screenspace
 	health_bar_control.show()
 
 func _on_show_timer_timeout():
@@ -44938,14 +44955,14 @@ var anim
 func activate(_requestor,_sensor_loc):
 	if locked:
 		shake_chest()
-		
+
 	else:
 		var new_translation = global_transform.translated_local(player_offset).rotated_local(Vector3.UP,PI)
 
 		#new_translation = global_transform.rotated_local(Vector3.UP,PI)
 		#new_translation = new_translation.translated_local(Vector3(0,_requestor.global_position.y,-1.5))
 		var move_time = .3
-		
+
 		if opened == false:
 			if _requestor.has_method("start_interact"):
 				_requestor.start_interact(interact_type,new_translation, move_time)
@@ -44954,7 +44971,7 @@ func activate(_requestor,_sensor_loc):
 
 func shake_chest():
 	chest_anim_player.play("Locked")
-	
+
 func open_chest():
 	anim = "open"
 	chest_anim_player.play(anim)
@@ -44972,7 +44989,7 @@ class_name DoorObject
 ## typically are on physics layer 4, and in group "Interactable"
 ## Interacts are a bit of a 'handshake'. The requestor tells the door
 ## to activate. The door replies back to the requestor a translation and wait time
-## so the requestor can be in sync, moving to a good position before running 
+## so the requestor can be in sync, moving to a good position before running
 ## their own "start_door" logic and animations.
 
 @onready var opened = false
@@ -44984,25 +45001,25 @@ var anim
 func activate(_requestor = self,_sensor_loc = Vector3.ZERO):
 	if locked:
 		shake_door()
-		
+
 	else: # detect where the requestor is, and pass them location info to know where to center up.
 		var dist_to_front = to_global(Vector3.FORWARD).distance_to(_requestor.global_position)
 		var dist_to_back = to_global(Vector3.BACK).distance_to(_requestor.global_position)
-		
+
 		var new_translation = global_transform
 		if dist_to_front > dist_to_back: # detect which side of the door the player is on.
 			new_translation = global_transform.rotated_local(Vector3.UP,PI)
 		# update the new_location with the tranfrom info of where the requestor should ideally stand to open the door
 		new_translation = new_translation.translated_local(Vector3(0,_requestor.global_position.y,-1))
 		var move_time = .3
-		
+
 		if opened == false:
 			# Requestor 'handshake', to trigger them to take open door actions
 			if _requestor.has_method("start_interact"):
 				_requestor.start_interact(interact_type,new_translation, move_time)
 				await get_tree().create_timer(move_time + .5).timeout
 			open_door(dist_to_front, dist_to_back)
-			
+
 		if opened == true:
 			close_door()
 
@@ -45010,7 +45027,7 @@ func activate(_requestor = self,_sensor_loc = Vector3.ZERO):
 
 func shake_door():
 	door_anim_player.play("Locked")
-	
+
 ## Based on the requestors updated location from being activated,
 ## The door will open in or outwards. A signally lever can pass it info
 ## and it will work just the same.
@@ -45239,7 +45256,7 @@ class_name GateObject
 ## typically are on physics layer 4, and in group "Interactable"
 ## Interacts are a bit of a 'handshake'. The requestor tells the gate
 ## to activate. The gate replies back to the requestor a translation and wait time
-## so the requestor can be in sync, moving to a good position before running 
+## so the requestor can be in sync, moving to a good position before running
 ## their own "start_gate" logic and animations.
 
 @onready var opened = false
@@ -45251,17 +45268,17 @@ var anim
 func activate(_requestor,_sensor_loc):
 	if locked:
 		shake_gate()
-		
+
 	else:
 		var dist_to_front = to_global(Vector3.FORWARD).distance_to(_requestor.global_position)
 		var dist_to_back = to_global(Vector3.BACK).distance_to(_requestor.global_position)
-		
+
 		var new_translation = global_transform
 		if dist_to_front > dist_to_back:
 			new_translation = global_transform.rotated_local(Vector3.UP,PI)
 		new_translation = new_translation.translated_local(Vector3(0,_requestor.global_position.y,-1))
 		var move_time = .3
-		
+
 		if opened == false:
 			if _requestor.has_method("start_interact"):
 				_requestor.start_interact(interact_type,new_translation, move_time)
@@ -45270,7 +45287,7 @@ func activate(_requestor,_sensor_loc):
 
 func shake_gate():
 	gate_anim_player.play("Locked")
-	
+
 func open_gate():
 	anim = "Open"
 	gate_anim_player.play(anim)
@@ -45554,7 +45571,7 @@ class_name LadderObject
 var top_or_bottom
 var mount_transform
 ## Distance from the rungs the player should move to.
-@export var ladder_offset : float = .4 
+@export var ladder_offset : float = .4
 
 func activate(_requestor: Node3D,sensor_location = "BOTTOM"):
 	var newTranslation = global_transform.rotated_local(Vector3.UP,PI)
@@ -45566,10 +45583,10 @@ func activate(_requestor: Node3D,sensor_location = "BOTTOM"):
 		top_or_bottom = "BOTTOM"
 		mount_transform = newTranslation.translated_local(Vector3(0,0,-.4))
 		mount_transform.origin.y = _requestor.transform.origin.y + .5
-		
+
 	if _requestor.has_method("start_ladder"):
 		_requestor.start_ladder(top_or_bottom,mount_transform)
-	
+
 
 
 
@@ -45689,11 +45706,11 @@ var anim
 func activate(_requestor,_sensor_loc):
 	if locked:
 		shake_lever()
-		
+
 	else:
 		var new_translation = global_transform.translated_local(player_offset).rotated_local(Vector3.UP,PI)
 		var move_time = .3
-		
+
 		if opened == false:
 			if _requestor.has_method("start_interact"):
 				_requestor.start_interact(interact_type,new_translation, move_time)
@@ -45702,7 +45719,7 @@ func activate(_requestor,_sensor_loc):
 
 func shake_lever():
 	lever_anim_player.play("locked")
-	
+
 func open_lever():
 	anim = "open"
 	lever_anim_player.play(anim)
@@ -45901,7 +45918,7 @@ func activate(_requestor: CharacterBodySoulsBase,_sensor_loc = null):
 		_requestor.queue_free()
 		await get_tree().create_timer(1).timeout
 		anim_player.play("idle",.2)
-	
+
 
 func respawn():
 	if reset_level:
@@ -46165,7 +46182,7 @@ class_name CharacterBodySoulsBase
 ## It's bad for production but handy when protoyping new animations and you don't
 ## want to hard bake where each trigger happens every time you change something.
 ## Once player animations are finalized, add the signal triggers to the animations
-## and remove the timers in the functions here as needed. 
+## and remove the timers in the functions here as needed.
 
 ## Manages all animations generally pulling info it needs from states and substates.
 @export var anim_state_tree : AnimationTreeSoulsBase
@@ -46178,7 +46195,7 @@ class_name CharacterBodySoulsBase
 ## Aids strafe rotation when alternating between cameras
 @onready var orientation_target = current_camera
 
-## Sensing interactable objects, like ladders, doors, etc. 
+## Sensing interactable objects, like ladders, doors, etc.
 @export var interact_sensor : Node3D
 ## The sensor that spotted the object, TOP sensor, or BOTTOM sensor.
 @onready var interact_loc : String # use "TOP","BOTTOM","BOTH"
@@ -46191,7 +46208,7 @@ signal chest_started
 signal lever_started
 
 
-## Weapons and attacking equipment system that manages moving nodes from the 
+## Weapons and attacking equipment system that manages moving nodes from the
 ## attacking hand, to their sheathed location
 @export var weapon_system : EquipmentSystem
 ## A helper variable, tracks the current weapon type for easier referencing from
@@ -46208,7 +46225,7 @@ signal big_attack_started
 ## A helper variable for keyboard events across 2 key inputs "shift+ attack", etc.
 var secondary_action
 
-## Gadgets and guarding equipment system that manages moving nodes from the 
+## Gadgets and guarding equipment system that manages moving nodes from the
 ## off-hand, to their hip location
 @export var gadget_system : EquipmentSystem
 ## A helper variable, tracks the current gadget type for easier referencing from
@@ -46295,42 +46312,42 @@ func _ready():
 
 	if interact_sensor:
 		interact_sensor.interact_updated.connect(_on_interact_updated)
-		
+
 	if weapon_system:
 		weapon_system.equipment_changed.connect(_on_weapon_equipment_changed)
 		_on_weapon_equipment_changed(weapon_system.current_equipment)
-		
+
 	if gadget_system:
 		gadget_system.equipment_changed.connect(_on_gadget_equipment_changed)
 		_on_gadget_equipment_changed(gadget_system.current_equipment)
-	
+
 	if inventory_system:
 		inventory_system.item_used.connect(_on_inventory_item_used)
-			
+
 	if health_system:
 		health_system.died.connect(death)
-		
-		
+
+
 	add_child(sprint_timer)
 	sprint_timer.one_shot = true
-	
+
 	add_child(dodge_timer)
 	dodge_timer.one_shot = true
 	dodge_timer.connect("timeout",_on_dodge_timer_timeout)
-	
+
 	add_child(attack_combo_timer)
 	attack_combo_timer.one_shot = true
-	
+
 	if anim_state_tree:
 		await anim_state_tree.animation_measured
 	await get_tree().create_timer(anim_length).timeout
 	current_state = state.FREE
-	
+
 ## Makes variable changes for each state, primiarily used for updating movement speeds
 func change_state(new_state):
 	current_state = new_state
 	changed_state.emit(current_state)
-	
+
 	match current_state:
 		state.FREE:
 			speed = default_speed
@@ -46345,7 +46362,7 @@ func change_state(new_state):
 		state.STATIC_ACTION:
 			speed = 0.0
 
-			
+
 func _physics_process(_delta):
 	match current_state:
 		state.FREE:
@@ -46355,112 +46372,112 @@ func _physics_process(_delta):
 		state.SPRINT:
 			rotate_player()
 			free_movement()
-			
+
 		state.DODGE:
 			dash_movement()
 			rotate_player()
-			
-			
+
+
 		state.LADDER:
 			ladder_movement()
-			
+
 		state.ATTACK:
 			dash_movement()
-		
+
 		state.DYNAMIC_ACTION:
 			free_movement()
 			rotate_player()
-			
+
 	apply_gravity(_delta)
 	fall_check()
-	
+
 func _input(_event:InputEvent):
 		# Update current orientation to camera when nothing pressed
 	if !Input.is_anything_pressed():
 		current_camera = get_viewport().get_camera_3d()
-	
+
 	if _event.is_action_pressed("ui_cancel"):
 		get_tree().quit()
-		
+
 	## strafe toggle on/off
 	if _event.is_action_pressed("strafe_target"):
 		set_strafe_targeting()
-		
+
 	# a helper for keyboard controls, not really used for joypad
 	if Input.is_action_pressed("secondary_action"):
 		secondary_action = true
 	else:
 		secondary_action = false
-	
+
 	if current_state == state.FREE:
 		if is_on_floor():
 			# if interactable exists, activate its action
 			if _event.is_action_pressed("interact"):
 				interact()
-			
+
 			elif _event.is_action_pressed("jump"):
 				jump()
-				
+
 			elif _event.is_action_pressed("use_weapon_light"):
 				if secondary_action: # big attack for keyboard
 					attack(secondary_action)
 				else:
 					attack()
-					
-					
+
+
 			elif _event.is_action_pressed("use_weapon_strong"):
 				attack(secondary_action) # big attack for joypad
 
 			elif _event.is_action_pressed("dodge_dash"):
 				dodge_or_sprint()
-				
+
 			elif _event.is_action_released("dodge_dash") \
 			&& sprint_timer.time_left:
 				dodge()
-			
+
 			elif _event.is_action_pressed("change_primary"):
 				weapon_change()
 			elif _event.is_action_pressed("change_secondary"):
 				gadget_change()
 
-			elif _event.is_action_pressed("use_gadget_strong"): 
+			elif _event.is_action_pressed("use_gadget_strong"):
 					use_gadget()
-					
+
 			elif _event.is_action_pressed("use_gadget_light"):
 				if secondary_action:
 					use_gadget()
 				else:
 					start_guard()
-			
+
 			elif _event.is_action_pressed("change_item"):
 				item_change()
-			elif _event.is_action_pressed("use_item"): 
+			elif _event.is_action_pressed("use_item"):
 				use_item()
 		else: # if not on floor
 			if _event.is_action_pressed("use_weapon_light"):
 				air_attack()
-	
+
 	elif current_state == state.SPRINT:
-		
+
 		if _event.is_action_released("dodge_dash"):
 			end_sprint()
-			
+
 		elif _event.is_action_pressed("jump"):
 				jump()
-				
+
 	elif current_state == state.LADDER:
 		if _event.is_action_pressed("dodge_dash"):
 			current_state = state.FREE
-				
+
 	if _event.is_action_released("use_gadget_light"):
 		if not secondary_action:
 			end_guard()
-	
+
 func apply_gravity(_delta):
 	if !is_on_floor() \
 	&& current_state != state.LADDER:
 		velocity.y -= gravity * _delta
-		
+
 func free_movement():
 	# Get the movement orientation from the angles of the player to the camera.
 	# Using only camera's basis rotation created weird speed inconsistencies at downward angles
@@ -46479,7 +46496,7 @@ func free_movement():
 		velocity.x = move_toward(velocity.x, 0, .5)
 		velocity.z = move_toward(velocity.z, 0, .5)
 	move_and_slide()
-	
+
 func rotate_player():
 	var freelook
 	match strafing:
@@ -46492,41 +46509,41 @@ func rotate_player():
 				freelook = false
 		false:
 			freelook = true
-	
+
 	var target_rotation
 	var current_rotation = global_transform.basis.get_rotation_quaternion()
-	
 
-	if freelook: 
+
+	if freelook:
 		# FreeCam rotation code, slerps to input oriented to the camera perspective, and only calculates when input is given
 		if input_dir:
 			var new_direction = calc_direction().normalized()
 			# Rotate the player per the perspective of the camera
 			target_rotation = current_rotation.slerp(Quaternion(Vector3.UP, atan2(new_direction.x, new_direction.z)), 0.2)
 			global_transform.basis = Basis(target_rotation)
-		
-	else: 
+
+	else:
 		# StrafeCam code - Look at target, slerping current rotation to the camera's rotation.
 		target_rotation = current_rotation.slerp(Quaternion(Vector3.UP, orientation_target.global_rotation.y + PI), 0.4)
 		global_transform.basis = Basis(target_rotation)
 
-		var forward_vector = global_transform.basis.z.normalized() 
-		
+		var forward_vector = global_transform.basis.z.normalized()
+
 		var new_direction = calc_direction().normalized()
 		strafe_cross_product = -forward_vector.cross(new_direction).y
 		move_dot_product = forward_vector.dot(new_direction)
 
-	# Otherwise freelook, which is when not strafing or dodging, as well as, when rolling as you strafe. 
+	# Otherwise freelook, which is when not strafing or dodging, as well as, when rolling as you strafe.
 
 	# move_and_slide() unused here. Controlled by States and free_movement().
 
 func set_strafe_targeting():
 	strafing = !strafing
 	strafe_toggled.emit(strafing)
-	
+
 func _on_target_cleared():
 	strafing = false
-	
+
 ## calculate and return the direction of movement oriented to the current camera
 func calc_direction():
 	var forward_vector = Vector3(0, 0, 1).rotated(Vector3.UP, current_camera.global_rotation.y)
@@ -46540,7 +46557,7 @@ func attack(_is_special_attack : bool = false):
 		big_attack_started.emit()
 	else:
 		attack_started.emit()
-	if anim_state_tree: 
+	if anim_state_tree:
 		await anim_state_tree.animation_measured
 	await get_tree().create_timer(anim_length *.3).timeout
 	attack_activated.emit()
@@ -46549,33 +46566,33 @@ func attack(_is_special_attack : bool = false):
 	if current_state == state.ATTACK:
 		current_state = state.FREE
 
-		
+
 func air_attack():
 	air_attack_started.emit()
 	current_state = state.DYNAMIC_ACTION
-	if anim_state_tree: 
+	if anim_state_tree:
 		await anim_state_tree.animation_measured
 	await get_tree().create_timer(anim_length *.5).timeout
 	attack_activated.emit()
 	await get_tree().create_timer(anim_length *.5).timeout
 	current_state = state.FREE
-	
-		
+
+
 
 
 func fall_check():
 	## If you leave the floor, store last position.
 	## When you land again, compare the distances of both location y values, if greater
-	## than the hard_landing_height, then trigger a hard landing. Otherwise, 
+	## than the hard_landing_height, then trigger a hard landing. Otherwise,
 	## clear the last_altitude variable.
-	if !is_on_floor() && last_altitude == null: 
+	if !is_on_floor() && last_altitude == null:
 		last_altitude = global_position
 	if is_on_floor() && last_altitude != null:
 		var fall_distance = abs(last_altitude.y - global_position.y)
 		if fall_distance > hard_landing_height:
 			hard_landing()
 		last_altitude = null
-				
+
 func hard_landing():
 		current_state = state.STATIC_ACTION
 		landed_hard.emit()
@@ -46585,7 +46602,7 @@ func hard_landing():
 		await get_tree().create_timer(anim_length).timeout
 		if current_state == state.STATIC_ACTION:
 			current_state = state.FREE
-	
+
 func jump():
 	if is_on_floor():
 		if anim_state_tree:
@@ -46598,7 +46615,7 @@ func jump():
 			await get_tree().create_timer(jump_duration *.7).timeout
 		velocity.y = jump_velocity
 
-func dash(_new_direction : Vector3 = Vector3.FORWARD, _duration = .1): 
+func dash(_new_direction : Vector3 = Vector3.FORWARD, _duration = .1):
 	# burst of speed toward indicated direction, or forward by default
 	speed = dodge_speed
 	if _new_direction:
@@ -46606,7 +46623,7 @@ func dash(_new_direction : Vector3 = Vector3.FORWARD, _duration = .1):
 	#speed = default_speed
 	await get_tree().create_timer(_duration).timeout
 	direction = Vector3.ZERO
-	
+
 func dodge_or_sprint():
 	if sprint_timer.is_stopped():
 		sprint_timer.start(.3)
@@ -46615,25 +46632,25 @@ func dodge_or_sprint():
 			&& input_dir:
 				current_state = state.SPRINT
 				sprint_started.emit()
-		
+
 func end_sprint():
 	if current_state == state.SPRINT:
 		current_state = state.FREE
-		
+
 func dash_movement():
 	var rate = .1
 	velocity.x = move_toward(velocity.x, direction.x * speed, rate)
 	velocity.z = move_toward(velocity.z, direction.z * speed, rate)
 	# required in the process function states for dodges/dashes
 	move_and_slide()
-	
-func dodge(): 
+
+func dodge():
 	# Burst of speed toward an input direction, or backwards
 	current_state = state.DODGE
 	can_be_hurt = false
 	sprint_timer.stop()
 	## uses timer rather than 'await' because 'await' stops processes like gravity affecting velocity.
-	if input_dir: # Dodge toward direction of input_dir 
+	if input_dir: # Dodge toward direction of input_dir
 		direction = calc_direction()
 		dodge_started.emit()
 	else: # Dodge toward the 'BACK' of your global position
@@ -46644,7 +46661,7 @@ func dodge():
 		await anim_state_tree.animation_measured
 	# After timer finishes, return to pre-dodge state
 	dodge_timer.start(anim_length * .7)
-	
+
 func _on_dodge_timer_timeout():
 	dodge_ended.emit()
 	speed = default_speed
@@ -46658,7 +46675,7 @@ func ladder_movement():
 	# exiting ladder state triggers:
 	last_altitude = global_position
 	if interact_loc == "BOTTOM":
-		exit_ladder("TOP") 
+		exit_ladder("TOP")
 	if is_on_floor():
 		exit_ladder("BOTTOM")
 	move_and_slide()
@@ -46672,7 +46689,7 @@ func start_ladder(top_or_bottom,mount_transform):
 	tween.tween_property(self,"global_transform", mount_transform, anim_length *.4)
 	await tween.finished
 	current_state = state.LADDER
-	
+
 func exit_ladder(exit_loc):
 	current_state = state.STATIC_ACTION
 	ladder_finished.emit(exit_loc)
@@ -46695,7 +46712,7 @@ func _on_animation_measured(_new_length):
 func _on_interact_updated(_interactable, _int_loc):
 	interactable = _interactable
 	interact_loc = _int_loc
-	
+
 func interact():
 	## interactions are a handshake. The interactable will reply back with more
 	## info or actions if needed.
@@ -46729,7 +46746,7 @@ func weapon_change():
 	weapon_change_ended.emit(weapon_type)
 	await get_tree().create_timer(anim_length *.5).timeout
 	current_state = state.FREE
-	
+
 func _on_weapon_equipment_changed(_new_weapon:EquipmentObject):
 	weapon_type = _new_weapon.equipment_info.object_type
 
@@ -46738,7 +46755,7 @@ func _on_gadget_equipment_changed(_new_gadget:EquipmentObject):
 
 func _on_inventory_item_used(_item):
 	current_item = _item
-	
+
 func gadget_change():
 	current_state = state.DYNAMIC_ACTION
 	gadget_change_started.emit()
@@ -46764,14 +46781,14 @@ func item_change():
 	item_change_ended.emit(current_item)
 	await get_tree().create_timer(anim_length *.5).timeout
 	current_state = state.FREE
-	
+
 func start_guard(): # Guarding, and for a short window, parring is possible
 	guarding = true
 	parry_active = true
 	current_state = state.DYNAMIC_ACTION
 	await get_tree().create_timer(parry_window).timeout
 	parry_active = false
-	
+
 func end_guard():
 	guarding = false
 	parry_active = false
@@ -46855,7 +46872,7 @@ func death():
 	death_started.emit()
 	await get_tree().create_timer(3).timeout
 	get_tree().reload_current_scene()
-		
+
 
 
 
@@ -91378,9 +91395,9 @@ class_name MeshStreak
 ## Where the top of the steak points should end in relation to the origin node.
 @export var streak_top = Vector3.UP
 
-## Recommend to turn shading off, and use transparency or glow for a cool look. 
-## Leave this empty to use a default white transparent gradient. 
-@export var custom_material : StandardMaterial3D 
+## Recommend to turn shading off, and use transparency or glow for a cool look.
+## Leave this empty to use a default white transparent gradient.
+@export var custom_material : StandardMaterial3D
 
 ## a helper counter to reduce how many edges are created.
 @onready var counter : int = 0
@@ -91400,17 +91417,17 @@ func _set_emitting(_new_value):
 func _ready():
 	top_level =  true # don't follow the parent, be independant
 	material_check() # if no material is set, create one and add it.
-	
+
 	if origin_node == null:
 		origin_node = get_parent()
 
 func _process(_delta):
-	
+
 	if emitting:
 		counter += 1
 		if counter > 1:
 			counter = 0
-		
+
 		if counter == 0:
 			create_edge()
 			mesh_update()
@@ -91431,7 +91448,7 @@ func mesh_update():
 			surface_tool.set_uv(Vector2.RIGHT)
 			surface_tool.add_vertex(each_edge.bottom_p)
 		mesh = surface_tool.commit()
-	
+
 func create_edge():
 	var new_top = origin_node.to_global(streak_top)
 	var new_bottom = origin_node.to_global(streak_bottom)
@@ -91444,7 +91461,7 @@ func create_edge():
 			mesh_array.append(new_edge)
 	else:
 		mesh_array.append(new_edge)
-	
+
 func remove_edge():
 	mesh_array.pop_front()
 
@@ -91459,10 +91476,10 @@ func material_check(): ## Create a new default material for the streak
 		new_gradient.set_color(0,Color(1,1,1,.3))
 		new_gradient.set_offset(0,.6)
 		new_gradient.set_color(1,Color(1,1,1,0))
-		new_gradient.set_offset(1,1)	
+		new_gradient.set_offset(1,1)
 		new_grad_texture.gradient = new_gradient
 		custom_material.albedo_texture = new_grad_texture
-		
+
 
 
 
@@ -91473,7 +91490,7 @@ extends Node
 class_name SignalCaller
 
 ## A curious switching node. Takes signals from a signalling node, and turns it
-## into a toggle action for a property on another node. Can either take an end 
+## into a toggle action for a property on another node. Can either take an end
 ## trigger signal or can be shut off after a lifetime in seconds.
 
 ## start_signal will toggle the property true or false, and after this lifetime in seconds,
@@ -91507,7 +91524,7 @@ extends Node
 class_name SignalSwitch
 
 ## A curious switching node. Takes signals from a signalling node, and turns it
-## into a toggle action for a property on another node. Can either take an end 
+## into a toggle action for a property on another node. Can either take an end
 ## trigger signal or can be shut off after a lifetime in seconds.
 
 ## start_signal will toggle the property true or false, and after this lifetime in seconds,
@@ -91520,7 +91537,7 @@ class_name SignalSwitch
 @export var signaling_node : Node
 @export var start_signal :String = "body_entered"
 ## Optional if you want to toggle the property back by a signal instead of lifetime.
-@export var end_signal : String 
+@export var end_signal : String
 ## The bool property on the parent of this node that you want to flip.
 @export var property: String = "emitting"
 
@@ -91537,7 +91554,7 @@ func _ready():
 func _on_signal(_arg = null):
 	toggle = !node_to_toggle.get(property)
 	node_to_toggle.set(property,toggle)
-	
+
 	if lifetime != 0:
 		await get_tree().create_timer(lifetime).timeout
 		toggle = !node_to_toggle.get(property)
@@ -91552,7 +91569,7 @@ extends AnimationTree
 class_name AnimationTreeSoulsBase
 
 ## A companion to the SoulsCharacterBase, expects a lot of specific signals and will react to them
-## by triggering oneshot animations, switching trees, blending run types, etc. This is really 
+## by triggering oneshot animations, switching trees, blending run types, etc. This is really
 ## the meat of the souls modules since so much relies on animations and their timing.
 ## Most of the difficulty comes from when the movement tree changes from one weapon type to another.
 ## There are many ways to approach transitioning between different movement trees,
@@ -91582,15 +91599,15 @@ func _ready():
 	add_child(attack_timer)
 	attack_timer.one_shot = true
 	attack_timer.timeout.connect(_on_attack_timer_timeout)
-	
+
 	if !player_node:
 		push_warning(str(self) + ": Player node must be set")
-		
+
 	player_node.dodge_started.connect(_on_dodge_started)
 	player_node.jump_started.connect(_on_jump_started)
 	player_node.sprint_started.connect(_on_sprint_started)
 	player_node.landed_hard.connect(_on_landed_hard)
-	
+
 	player_node.interact_started.connect(_on_interact_started)
 	player_node.ladder_started.connect(_on_ladder_start)
 	player_node.ladder_finished.connect(_on_ladder_finished)
@@ -91600,15 +91617,15 @@ func _ready():
 	player_node.attack_started.connect(_on_attack_started)
 	player_node.big_attack_started.connect(_on_big_attack_started)
 	player_node.air_attack_started.connect(_on_air_attack_started)
-	
+
 	player_node.gadget_change_started.connect(_on_gadget_change_started)
 	player_node.gadget_change_ended.connect(_on_gadget_change_ended)
 	player_node.gadget_started.connect(_on_gadget_started)
-	
+
 	player_node.item_change_started.connect(_on_item_change_started)
 	player_node.item_change_ended.connect(_on_item_change_ended)
 	player_node.use_item_started.connect(_on_use_item_started)
-		
+
 	player_node.parry_started.connect(_on_parry_started)
 	player_node.hurt_started.connect(_on_hurt_started)
 	player_node.block_started.connect(_on_block_started)
@@ -91618,17 +91635,17 @@ func _ready():
 	_on_weapon_change_ended(player_node.weapon_type)
 	_on_gadget_change_ended(player_node.gadget_type)
 	_on_item_change_ended(player_node.current_item)
-	
+
 func _process(_delta):
-	
+
 	if player_node.strafing:
 		set_strafe()
 	else:
 		set_free_move()
-		
+
 	if player_node.current_state == player_node.state.LADDER:
 		set_ladder()
-		
+
 	set_guarding()
 
 
@@ -91654,11 +91671,11 @@ func _on_attack_started():
 	request_oneshot("Attack")
 	await animation_measured
 	attack_timer.start(anim_length +.2)
-	
+
 	match attack_count:
 		1:
 			attack_count = 2
-		2: 
+		2:
 			attack_count = 1
 
 func _on_big_attack_started():
@@ -91667,7 +91684,7 @@ func _on_big_attack_started():
 	await animation_measured
 	attack_timer.start(anim_length +.2)
 	attack_count = 2
-	
+
 func _on_air_attack_started():
 	attack_count = 4
 	request_oneshot("Attack")
@@ -91686,12 +91703,12 @@ func _on_hurt_started(): ## Picks a hurt animation between "Hurt1" and "Hurt2"
 		hurt_count = randi_range(1,2)
 		request_oneshot("Hurt")
 		current_weapon_tree.start("MoveStrafe")
-		
+
 func abort_oneshot(_last_oneshot:String):
-	
+
 	set("parameters/" + _last_oneshot + "/request",AnimationNodeOneShot.ONE_SHOT_REQUEST_ABORT)
 
-	
+
 func _on_death_started():
 	base_state_machine.travel("Death")
 
@@ -91703,7 +91720,7 @@ func _on_gadget_started():
 
 func _on_sprint_started():
 	base_state_machine.travel("SPRINT_tree")
-	
+
 func _on_dodge_started():
 	request_oneshot("Dodge")
 
@@ -91711,7 +91728,7 @@ func _on_interact_started(_new_interact_type):
 	interact_type = _new_interact_type
 	await get_tree().process_frame
 	request_oneshot("Interacts")
-			
+
 
 func _on_jump_started():
 	request_oneshot("Jump")
@@ -91743,13 +91760,13 @@ func _on_item_change_ended(_new_item):
 func _on_ladder_start(top_or_bottom):
 	base_state_machine.start("LADDER_tree")
 	ladder_state_machine.travel("LadderStart_" + top_or_bottom)
-	
+
 func _on_ladder_finished(top_or_bottom):
 	ladder_state_machine.travel("LadderEnd_" + top_or_bottom)
-	
+
 func set_ladder():
 	set("parameters/MovementStates/LADDER_tree/LadderBlend/blend_position",-player_node.input_dir.y)
-	
+
 func set_strafe():
 	# Strafe left and right animations run by the player's velocity cross product
 	# Forward and back are acording to input, since direction changes by fixed camera orientation
@@ -91758,7 +91775,7 @@ func set_strafe():
 		new_blend *= .25 # Force a walk animiation
 	else:
 		# apply input as a magnatude for more natural run versus walk animation blending
-		new_blend *= Vector2(abs(player_node.input_dir.x),abs(player_node.input_dir.y)) 
+		new_blend *= Vector2(abs(player_node.input_dir.x),abs(player_node.input_dir.y))
 	lerp_movement = get("parameters/MovementStates/" + weapon_type + "_tree/MoveStrafe/blend_position")
 	lerp_movement = lerp(lerp_movement,new_blend,.2)
 	set("parameters/MovementStates/" + weapon_type + "_tree/MoveStrafe/blend_position", lerp_movement)
@@ -91802,7 +91819,7 @@ class_name EquipmentSystem
 ## child #0 of stored, will move to held. Handy for swaping objects from hand
 ## bones to back bones or similar.
 
-## the Activate and deactivate signals will turn on and off monitoring for the 
+## the Activate and deactivate signals will turn on and off monitoring for the
 ## area3d children. Also if they hit things in the target_group they'll emit
 ## the hit_target signal, and if they hit anything else, they'll emit hit_world
 ## signal. Hitting target will communicate equipment and player_node info to the
@@ -91812,13 +91829,13 @@ class_name EquipmentSystem
 signal equipment_changed
 ## The node that will emit the weapon change signal
 @export var player_node : CharacterBody3D
-## The object group to detect 
+## The object group to detect
 @export var target_group : String = "Targets"
 ## The signal name should be connected to trigger the equipment swap
 @export var change_signal : String = "weapon_changed"
 ## The signal name from player_node for when the item should be active.
 ## items themselves should manage what "active" means, but typically this is
-## monitoring/collision shapes, emitters,sound FX, etc. 
+## monitoring/collision shapes, emitters,sound FX, etc.
 @export var activate_signal : String = "attack_started"
 
 @export var deactivate_signal : String = "hurt_started"
@@ -91844,7 +91861,7 @@ func _ready():
 		## needed to turn off monitoring if hurt mid-attack
 		if player_node.has_signal(deactivate_signal):
 			player_node.connect(deactivate_signal,_on_stop_signal)
-			 
+
 	## update what weapon we're starting with
 	if held_mount_point:
 		if held_mount_point.get_child(0):
@@ -91859,30 +91876,30 @@ func _ready():
 			stored_equipment = stored_mount_point.get_child(0)
 			stored_equipment.equipped = false
 			stored_equipment.monitoring = false
-	
+
 func _on_equipment_changed():
 	if stored_mount_point.get_child(0) && held_mount_point.get_child(0):
 		stored_equipment = stored_mount_point.get_child(0)
-		
+
 		## rearrange children
 		held_mount_point.remove_child(current_equipment)
 		stored_mount_point.remove_child(stored_equipment)
-		
+
 		held_mount_point.add_child(stored_equipment)
 		stored_mount_point.add_child(current_equipment)
-		
+
 		# Update to current equipment
 		current_equipment.equipped = false
 		if current_equipment.is_connected("body_entered", _on_body_entered):
 			current_equipment.disconnect("body_entered",_on_body_entered)
 		current_equipment = held_mount_point.get_child(0)
-		
+
 		await get_tree().process_frame
 		if current_equipment.has_signal("body_entered"):
 			current_equipment.body_entered.connect(_on_body_entered)
 		current_equipment.equipped = true
 		equipment_changed.emit(current_equipment)
-		
+
 func _on_activated():
 	## awaiting so the area3D starts monitoring about after attack wind-up
 	if current_equipment:
@@ -91891,13 +91908,13 @@ func _on_activated():
 		await get_tree().create_timer(player_node.anim_length *.35).timeout
 		## after moment turn off monitoring to not hit things
 		current_equipment.monitoring = false
-		
+
 func _on_body_entered(_hit_body):
 	if _hit_body.is_in_group(target_group):
 		if _hit_body.has_method("hit"):
 			hit_target.emit()
 			_hit_body.hit(player_node,current_equipment.equipment_info)
-	else: 
+	else:
 		hit_world.emit()
 
 func _on_stop_signal():
@@ -92071,16 +92088,16 @@ extends Area3D
 class_name EquipmentObject
 
 ## Dumb Area3D nodes that holding equipment stats, they do little more than a
-## normal area3d would do. Designed to be used with an EquipmentSystem node, 
-## which sets equipomentobjects equipped var, and reports to the a player_node if 
-## the EquipmentObejct hit something.  
+## normal area3d would do. Designed to be used with an EquipmentSystem node,
+## which sets equipomentobjects equipped var, and reports to the a player_node if
+## the EquipmentObejct hit something.
 
 @export var equipment_info : EquipmentResource = EquipmentResource.new()
 @onready var equipped = false : set = update_equipped
 
 signal equipped_changed
-	
-	
+
+
 func update_equipped(_new_value):
 	equipped = _new_value
 	equipped_changed.emit(_new_value)
@@ -92097,7 +92114,7 @@ class_name EquipmentResource
 ## Loose stats for equpiment items. Meqnt to work with EquipmentObjects and
 ## EquipmentSystems. When an EquipmentObject hits a target, these stats get
 ## passed to the the hit target by the EquipmentSystem. It's up to the hit object
-## to decide what to do with this info (take damage, stunned, has weaknesses/etc).  
+## to decide what to do with this info (take damage, stunned, has weaknesses/etc).
 
 @export var name : String = "Equipable Item"
 @export_enum("SLASH","HEAVY","SHIELD","OTHER") var object_type : String= "SLASH"
@@ -92610,13 +92627,13 @@ signal foot_lifted
 func _physics_process(_delta):
 	reset_step()
 	step_check()
-	
+
 func reset_step():
 	if on_floor:
 		if !floorcast.is_colliding():
 			foot_lifted.emit()
 			on_floor = false
-		
+
 func step_check():
 	if on_floor == false:
 		if floorcast.is_colliding():
@@ -92670,11 +92687,11 @@ class_name FootstepSoundSystem
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	
+
 	if left_foot:
 		left_foot.foot_stepped.connect(_on_foot_stepped)
 		left_foot.foot_lifted.connect(_on_foot_lifted)
-		
+
 	if right_foot:
 		right_foot.foot_stepped.connect(_on_foot_stepped)
 		right_foot.foot_lifted.connect(_on_foot_lifted)
@@ -92683,7 +92700,7 @@ func _ready():
 		footsteps.stream = step_sound
 	if pant_sound:
 		pant_swish.stream = pant_sound
-	
+
 func _rando_foot_play():
 	footsteps.pitch_scale = randf_range(.9,1.2)
 	footsteps.play()
@@ -92733,10 +92750,10 @@ class_name InventorySystem
 ## It's intention is to give ideas for how to work with invetory resource
 ## objects. But it could be adjusted to tie into a singleton based system
 ## or fuller inventory node, and this one would only pass out signals
-## for currently equipped gear, fetching current inventory from a 
+## for currently equipped gear, fetching current inventory from a
 ## centralized system, or some other nonsense.
 
-@export var signaling_node : Node3D 
+@export var signaling_node : Node3D
 @export var change_item_signal : String = "item_changed"
 @export var use_item_signal  : String = "item_used"
 
@@ -92752,16 +92769,16 @@ func _ready():
 	if signaling_node:
 		signaling_node.connect(change_item_signal,_on_change_item_signal)
 		signaling_node.connect(use_item_signal, _on_item_used_signal)
-	
+
 	# I'm giving the player some stuff to start with, but you can see here
 	# how obtaining items in game can be as simple as appendingg to the inventory array.
 	starter_item.count = 3
 	starter_item2.count = 3
 	inventory.append(starter_item)
 	inventory.append(starter_item2)
-	
+
 	restack_inventory()
-	
+
 func _on_item_used_signal():
 	if current_item.count > 0:
 		item_used.emit(current_item)
@@ -92769,15 +92786,15 @@ func _on_item_used_signal():
 		inventory_updated.emit(inventory)
 	else:
 		item_used.emit(null)
-		
+
 func _on_change_item_signal():
 	if inventory.size() > 0:
 		change_item(0,inventory.size()-1)
-		
+
 func add_item(_new_item: ItemResource):
 	inventory.append(_new_item)
 	restack_inventory()
-	
+
 func change_item(_start_index,_destination_index):
 	var start_item = inventory[_start_index]
 	var dest_item = inventory[_destination_index]
@@ -92797,16 +92814,16 @@ func change_item(_start_index,_destination_index):
 	#inventory[_index] = _new_item
 	#inventory_updated.emit(inventory)
 	#return former_item
-	
+
 func restack_inventory(): ## Will stack same type items.
 	var inventory_refresh = []
 	await get_tree().process_frame # arrays are slow, give it a frame
-	
+
 	for item in range(inventory.size()):
 		var this_item = inventory[item]
 		var found = false
 		for item_check in range(inventory_refresh.size()):
-			## check each item, and flag if already found in our new inventory 
+			## check each item, and flag if already found in our new inventory
 			## being refreshed. If it's already found, just increment the count.
 			if this_item.item_name == inventory_refresh[item_check].item_name:
 				this_item.count += inventory_refresh[item_check].count
@@ -92814,7 +92831,7 @@ func restack_inventory(): ## Will stack same type items.
 
 		if not found:
 			inventory_refresh.append(this_item)
-			
+
 	inventory = inventory_refresh
 
 	if inventory[0]:
@@ -92842,7 +92859,7 @@ signal touched_target
 func _ready():
 	freeze = true
 	area3d.monitoring = false
-	
+
 func activate():
 	area3d.monitoring = true
 	top_level = true
@@ -92872,7 +92889,7 @@ class_name ItemResource
 ## Loose stats for equpiment items. Meqnt to work with EquipmentObjects and
 ## EquipmentSystems. When an EquipmentObject hits a target, these stats get
 ## passed to the the hit target by the EquipmentSystem. It's up to the hit object
-## to decide what to do with this info (take damage, stunned, has weaknesses/etc).  
+## to decide what to do with this info (take damage, stunned, has weaknesses/etc).
 
 @export var item_name : String = "Consumable Item"
 @export_enum("DRINK","THROWN","OTHER") var object_type : String= "DRINK"
@@ -92892,7 +92909,7 @@ FILE: player/item_system/item_system.gd
 extends Node3D
 class_name ItemSystem
 
-## This class is tied very closely to the Inventory system. It's purpose is to 
+## This class is tied very closely to the Inventory system. It's purpose is to
 ## place the current inventory item on the player's hip whenever items are changed
 ## it also manages throwing objects when the item used is a throwable.
 
@@ -92917,14 +92934,14 @@ func _ready():
 			signaling_node.connect(use_item_signal, _on_item_used_signal)
 		if signaling_node.has_signal("inventory_updated"):
 			signaling_node.connect("inventory_updated", _on_inventory_updated)
-		
+
 func _on_inventory_updated(inventory):
 	# This simply adds a visual version to your hip when you change/use items.
 	var thekids = storage_mount.get_children()
 	for kid in thekids:
 		print(kid)
 		kid.queue_free()
-	
+
 	if inventory[0]:
 		var current_item = inventory[0]
 		if current_item.count > 0:
@@ -92933,8 +92950,8 @@ func _on_inventory_updated(inventory):
 				var new_item :RigidBody3D = item_instance.instantiate()
 				# pass ItemResource data to this new physical object
 				storage_mount.call_deferred("add_child",new_item)
-			
-			
+
+
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _on_item_used_signal(_current_item : ItemResource):
@@ -92946,7 +92963,7 @@ func _on_item_used_signal(_current_item : ItemResource):
 			new_item.object_type = _current_item.object_type
 			new_item.player_node = player_node
 			mount_point.call_deferred("add_child",new_item)
-			
+
 			await get_tree().create_timer(.8).timeout
 			new_item.activate()
 			if new_item.object_type == "THROWN":
@@ -92956,7 +92973,7 @@ func _on_item_used_signal(_current_item : ItemResource):
 				new_item.apply_impulse(force_dir * throw_strength, mount_point.global_position)
 			elif new_item.object_type == "DRINK":
 				item_drunk.emit()
-			
+
 
 
 
@@ -93273,11 +93290,11 @@ FILE: player/player_interact_sensors/player_interact_sensors.gd
 extends Node3D
 class_name PlayerInteractSensors
 
-## Player node's figurative "eye balls". This will sense objects in layer 4 by 
-## default, but can be overridden by setting the detection_mask layers. 
+## Player node's figurative "eye balls". This will sense objects in layer 4 by
+## default, but can be overridden by setting the detection_mask layers.
 ## This detects objects in the detection_group of that layer.
-## This class focuses ONLY on detection and signalling out what was seen 
-## and which sensor saw it. Actual activation of interactable objects 
+## This class focuses ONLY on detection and signalling out what was seen
+## and which sensor saw it. Actual activation of interactable objects
 ## happens between a 'handshake' exchange between the player and the interactable
 ## node.
 
@@ -93295,7 +93312,7 @@ signal interact_updated
 func _ready():
 	top_sensor.collision_layer = detection_mask
 	bottom_sensor.collision_mask = detection_mask
-	
+
 	top_sensor.body_entered.connect(_top_body_entered)
 	top_sensor.body_exited.connect(_top_body_exited)
 	bottom_sensor.body_entered.connect(_bottom_body_entered)
@@ -93316,16 +93333,16 @@ func _bottom_body_entered(_bottom_body):
 	if _bottom_body.is_in_group(detection_group):
 		interactable_bottom = _bottom_body
 		_interact_update()
-	
+
 func _bottom_body_exited(_bottom_body):
 	if _bottom_body.is_in_group(detection_group):
 		if interactable_bottom == _bottom_body:
 			interactable_bottom = null
 		_interact_update()
-	
+
 func _interact_update():
 	## This updates the interactable objects and
-	## which sensor spotted it if you have an 
+	## which sensor spotted it if you have an
 	## if an interact sensor added to the export.
 	var interactable
 	var interact_loc
@@ -93429,7 +93446,7 @@ func _ready():
 		if targeting_system.has_signal(targeting_singal_string):
 			targeting_system.connect(targeting_singal_string,_on_player_targeting_system_target_found)
 
-	
+
 func _process(_delta):
 	if targeting_system.targeting && target:
 		show_reticle()
@@ -93438,7 +93455,7 @@ func _process(_delta):
 
 func _on_player_targeting_system_target_found(_new_target):
 	target = _new_target
-	
+
 func show_reticle():
 	if is_instance_valid(target):
 		show()
@@ -93458,7 +93475,7 @@ extends Node3D
 class_name PlayerTargetingSystem
 
 
-## A set of eyes detect potential targets. And a raycast 
+## A set of eyes detect potential targets. And a raycast
 ## confirms they are in the eyeline (to not target through walls).
 ## Each eye manages their own list of targets they see. When targeting
 ## is enabled (usually via a signaling node/signal to match when strafe
@@ -93482,7 +93499,7 @@ class_name PlayerTargetingSystem
 @onready var eyeline = $Eyeline
 
 var target_list : Array = []
-@onready var targeting = false 
+@onready var targeting = false
 
 signal target_found
 
@@ -93498,26 +93515,26 @@ func _ready():
 	left_eye.collision_mask = target_detection_layer_mask
 	right_eye.collision_mask = target_detection_layer_mask
 	eyeline.collision_mask = target_detection_layer_mask
-	
+
 	center_eye.connect("target_list_updated",_update_lists)
 	left_eye.connect("target_list_updated",_update_lists)
 	right_eye.connect("target_list_updated",_update_lists)
-	
+
 	if signaling_node:
 		if signaling_node.has_signal(targeting_toggle_signal):
 			signaling_node.connect(targeting_toggle_signal,_on_targeting_toggled)
-			
+
 func _update_lists():
 	target_list = center_eye.target_list
 	target_list += right_eye.target_list
 	target_list += left_eye.target_list
 
-func _input(_event:InputEvent): 
+func _input(_event:InputEvent):
 	# Senses input left or right on mouse or joypad
 	# and calls to change target to the left or right.
 	if targeting:
 		if _event is InputEventMouseMotion:
-			if abs(_event.relative.x) > mouse_retarget_sensitivity * 100: 
+			if abs(_event.relative.x) > mouse_retarget_sensitivity * 100:
 				var target_dir = sign(_event.relative.x)
 				select_new_target(target_dir, .6)
 
@@ -93525,12 +93542,12 @@ func _input(_event:InputEvent):
 			if _event.axis == 2 && abs(_event.axis_value) > joystick_retarget_sensitivity * .1:
 				var target_dir = sign(_event.axis_value)
 				select_new_target(target_dir, .5)
-	
+
 	## targeting is activated by outside influences. Typically a follow cam
 	## or player will signal it's targeting status to this node for it to begin
 	## scanning and reporting back targets.
-		
-	
+
+
 func _on_targeting_toggled(_toggle):
 	print("targeting toggled: " + str(_toggle))
 	targeting = _toggle
@@ -93538,19 +93555,19 @@ func _on_targeting_toggled(_toggle):
 		target_list.clear()
 	else:
 		get_target()
-	
+
 func select_new_target(_new_direction = -1,_delay = .5):
 	if _new_direction == -1:
 		get_target(left_eye.target_list)
 	elif _new_direction == 1:
 		get_target(right_eye.target_list)
 	await get_tree().create_timer(_delay).timeout
-	
+
 func _filter_body(body):
 	# returns true of the bodies are in the target group.
 	if body.is_in_group(target_group_name):
 		return true
-		
+
 func eyeline_check(_new_target):
 	if _new_target:
 		eyeline.look_at(_new_target.global_position + Vector3.UP,Vector3.UP,false)
@@ -93560,14 +93577,14 @@ func eyeline_check(_new_target):
 				return true
 
 func get_target(_list = target_list):
-	# prioritize the center eye, but if no target found, check the next eyes for 
+	# prioritize the center eye, but if no target found, check the next eyes for
 	# a target to assign
 	for new_target in _list:
 		if await eyeline_check(new_target):
 			target_found.emit(new_target)
 			break
-	
-	
+
+
 
 
 
@@ -93661,7 +93678,7 @@ texture = SubResource("GradientTexture2D_dhr5k")
 ================================================
 FILE: screenshots/.gdignore
 ================================================
- 
+
 
 
 
@@ -93678,7 +93695,7 @@ extends Control
 func _input(event):
 	if event.is_action_pressed("ui_text_newline"):
 		visible = !visible
-		
+
 func _ready():
 	hide()
 	nine_patch_rect.size = control_card_label.size
@@ -93695,8 +93712,8 @@ FILE: ui/death_card.gd
 extends Control
 class_name LifeDeathCard
 
-## A very basic node that waits for a signal from a node, and queues an 
-## animation to play. 
+## A very basic node that waits for a signal from a node, and queues an
+## animation to play.
 
 @export var signaling_node : Node
 @export var dead_signal_string : String = "death_started"
@@ -93706,7 +93723,7 @@ func _ready():
 	animation_player.play("lifecard")
 	if signaling_node.has_signal(dead_signal_string):
 		signaling_node.connect(dead_signal_string,_on_dead_signal)
-	
+
 func _on_dead_signal():
 	animation_player.play("deadcard")
 
@@ -93737,9 +93754,9 @@ FILE: ui/item_slot.gd
 ================================================
 extends Control
 
-## A very crude inventory system UI. It waits for a signal from whatever node 
+## A very crude inventory system UI. It waits for a signal from whatever node
 ## you choose, that signal should pass the currently held inventory. This node
-## looks at the first item in that inventory array, hecks the item count, and 
+## looks at the first item in that inventory array, hecks the item count, and
 ## texture and updates it on screen.
 
 @export var signaling_node : Node
@@ -93761,5 +93778,3 @@ func _on_update_signal(inventory):
 	else:
 		item_count.text = str(0)
 		item_texture.texture = null
-
-
