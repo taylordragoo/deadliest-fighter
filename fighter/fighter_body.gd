@@ -405,7 +405,7 @@ func fall_check() -> void:
 	if not is_on_floor() and last_altitude == null:
 		last_altitude = global_position
 	if is_on_floor() and last_altitude != null:
-		var fall_distance := abs(last_altitude.y - global_position.y)
+		var fall_distance: float = abs(last_altitude.y - global_position.y)
 		if fall_distance > hard_landing_height:
 			hard_landing()
 		last_altitude = null
