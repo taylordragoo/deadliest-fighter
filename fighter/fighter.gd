@@ -58,6 +58,7 @@ var input_dir: Vector2 = Vector2.ZERO   # last value set by intent_move; X = str
 var sprint_held: bool = false           # last value set by intent_sprint
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
+var _cached_cam: Camera3D
 
 # =========================================================================
 # Lifecycle
@@ -241,7 +242,10 @@ func _sprinting_movement(delta: float) -> void:
 func _compute_sprint_velocity() -> Vector3:
 	if input_dir.length_squared() < 0.0001:
 		return Vector3.ZERO
-	var cam := get_viewport().get_camera_3d()
+	var cam := _cached_cam
+	if cam == null or not is_instance_valid(cam):
+		cam = get_viewport().get_camera_3d()
+		_cached_cam = cam
 	if cam == null:
 		# Fallback: world-space movement if there is no current camera.
 		var fallback := Vector3(input_dir.x, 0.0, input_dir.y)

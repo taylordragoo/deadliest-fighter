@@ -1,6 +1,6 @@
 [gd_scene load_steps=8 format=3 uid="uid://cj4pl4lt8s575"]
 
-[ext_resource type="PackedScene" uid="uid://bf0fighterbase1" path="res://fighter/fighter.tscn" id="1_fighter_scene"]
+[ext_resource type="PackedScene" uid="uid://cj4pl4lt6pcw5" path="res://fighter/fighter.tscn" id="1_fighter_scene"]
 [ext_resource type="Script" path="res://fighter/brains/player_brain.gd" id="2_player_brain_script"]
 [ext_resource type="Script" path="res://fighter/fighter_cam.gd" id="3_fighter_cam_script"]
 
