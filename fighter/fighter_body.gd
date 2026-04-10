@@ -108,12 +108,6 @@ func _ready() -> void:
 	if anim_state_tree:
 		anim_state_tree.animation_measured.connect(_on_animation_measured)
 
-	# Resolve opponent from NodePath (same pattern as Phase 1's fighter.gd)
-	if opponent == null and not opponent_path.is_empty():
-		await get_tree().process_frame
-		if opponent == null:
-			opponent = get_node_or_null(opponent_path) as Node3D
-
 	add_child(sprint_timer)
 	sprint_timer.one_shot = true
 
@@ -123,6 +117,12 @@ func _ready() -> void:
 
 	add_child(attack_combo_timer)
 	attack_combo_timer.one_shot = true
+
+	# Resolve opponent from NodePath — synchronous because siblings are
+	# already in the tree when _ready() runs (Godot adds children depth-first).
+	# An async frame-skip here would race with animation_measured below.
+	if opponent == null and not opponent_path.is_empty():
+		opponent = get_node_or_null(opponent_path) as Node3D
 
 	# Wait for spawn animation, then transition to FREE
 	if anim_state_tree:
