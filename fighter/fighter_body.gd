@@ -268,7 +268,7 @@ func _face_opponent(weight: float) -> void:
 	to_opp.y = 0.0
 	if to_opp.length_squared() < 0.0001:
 		return
-	var target_yaw := atan2(to_opp.x, to_opp.z) + PI
+	var target_yaw := atan2(to_opp.x, to_opp.z)
 	rotation.y = lerp_angle(rotation.y, target_yaw, weight)
 
 func _should_re_engage_lock() -> bool:

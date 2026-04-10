@@ -50,7 +50,7 @@ func _make_fighter_pair(a_pos: Vector3, b_pos: Vector3) -> Array[FighterBody]:
 	# Face A toward B
 	var to_b := (b_pos - a_pos)
 	to_b.y = 0
-	a.rotation.y = atan2(to_b.x, to_b.z) + PI
+	a.rotation.y = atan2(to_b.x, to_b.z)
 	return [a, b]
 
 func _teardown(pair: Array[FighterBody]) -> void:
