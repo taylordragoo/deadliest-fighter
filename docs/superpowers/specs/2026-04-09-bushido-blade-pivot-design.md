@@ -28,12 +28,14 @@ The spec defines a **Playground MVP** that proves the core feel against an AI op
 
 A new top-level `fighter/` module, parallel to the existing `player/` and `enemy/` directories. The existing souls directories are **not modified**; they remain as a reference implementation that the souls demo scene (`demo_level/world_castle.tscn`) continues to run against.
 
+`fighter_body.gd`, `fighter_body.tscn`, and `fighter_animation_tree.gd` are **forks** of the equivalent files under `player/` (`character_body_souls_base.gd`, `character_body_souls_base.tscn`, `souls_animation_tree.gd`). Forks are maintained as independent copies — souls files are never edited. Future souls-template updates do not propagate. The fork reuses the souls template's proven strafe movement, rotation, 2D blend-space animation math, weapon-swap sub-tree machinery (repurposed as stance swap), parry kernel, dodge i-frames, and attack signal phasing instead of reimplementing them.
+
 ```
 fighter/
-├── fighter.gd                 # Fighter — CharacterBody3D controller (both human and AI use this)
-├── fighter.tscn               # Fighter scene — mesh + skeleton + animation tree + equipment mounts
+├── fighter_body.gd            # FighterBody — forked from CharacterBodySoulsBase, stripped of souls systems
+├── fighter_body.tscn          # Fighter scene — forked from character_body_souls_base.tscn, stripped
 ├── fighter_brain.gd           # FighterBrain — abstract base for "who drives this fighter"
-├── fighter_animation_tree.gd  # FighterAnimationTree — new, copied+stripped from souls_animation_tree.gd
+├── fighter_animation_tree.gd  # FighterAnimationTree — forked from souls_animation_tree.gd, stripped
 ├── brains/
 │   ├── player_brain.gd        # reads Input actions, emits high-level intents
 │   └── ai_brain.gd            # runs ~5-rule MVP AI, emits the same high-level intents
@@ -53,9 +55,9 @@ fighter/
 
 ### Fighter + Brain separation (the central idea)
 
-There is **one** `Fighter` class, representing a combatant's body, state, and simulation. Each Fighter has exactly one **`FighterBrain`** attached — either a `PlayerBrain` (reads `Input.*`) or an `AIBrain` (runs decision logic). Both emit the same high-level intents through method calls on the fighter.
+There is **one** `FighterBody` class (forked from the souls `CharacterBodySoulsBase`), representing a combatant's body, state, and simulation. Each FighterBody has exactly one **`FighterBrain`** attached — either a `PlayerBrain` (reads `Input.*`) or an `AIBrain` (runs decision logic). Both emit the same high-level intents through method calls on the fighter.
 
-This sidesteps the souls template's fundamental split (`CharacterBodySoulsBase` and `CharacterBodyEnemyBase` share no base class and duplicate hit/health/movement logic). It makes local 2P trivial (instantiate two Fighters, attach two `PlayerBrain`s), player-vs-AI and AI-vs-AI free, and netplay-friendly (intents are a natural wire format).
+This wraps a **fork** of the souls `CharacterBodySoulsBase` (copied into `fighter/fighter_body.gd`, stripped of ladder/inventory/item/interact/gadget systems) with a brain abstraction. We reuse the souls template's proven movement, rotation, strafe blending, weapon-swap machinery (repurposed as stance swap), parry kernel, dodge i-frames, and attack signal chain, instead of reimplementing them. The original `player/CharacterBodySoulsBase` is never modified and the souls demo scene continues to function as a reference. This makes local 2P trivial (instantiate two FighterBodies, attach two `PlayerBrain`s), player-vs-AI and AI-vs-AI free, and netplay-friendly (intents are a natural wire format).
 
 ### Subsystem ownership
 
@@ -440,10 +442,10 @@ Each phase ends in a *playable* state. You should be able to stop at any phase e
 - **Exit:** Move with stick; strafe around a static dummy Fighter; sprint breaks lock; releasing re-engages. Camera follows correctly.
 
 ### Phase 2 — Animation tree integration (looks right, no combat yet)
-- **Copy** `player/souls_animation_tree.gd` to `fighter/fighter_animation_tree.gd`; aggressively strip souls-specific signals. Keep the `MoveStrafe` 2D blend-space logic (`strafe_cross_product` / `move_dot_product`). Kill the weapon-tree swap (MVP has one weapon).
-- **Stance poses at MVP (known hack):** since stance animations don't exist yet, fake stance readability via bone rotation or idle pose blend. UPPER = arms-up pose approximated on existing skeleton; MIDDLE = default idle. LOWER punted until animations exist.
-- **This phase is the early gate for stance legibility risk.** If we can't make stances visibly distinct enough here, we know *before* we've built combat on top, and can either source stance animations, accept very ugly prototype stances, or revisit the stance concept.
-- **Exit:** Move/sprint as before, plus: press stance-select and see the character visibly shift pose between UPPER and MIDDLE. Press strike and see the existing attack animation play.
+- **Fork** `player/character_body_souls_base.gd` → `fighter/fighter_body.gd`, `player/souls_animation_tree.gd` → `fighter/fighter_animation_tree.gd`, `player/character_body_souls_base.tscn` → `fighter/fighter_body.tscn`. Strip souls-specific systems (ladders, inventory, items, gadgets, interactables) from the copies. Wrap the fork with the Phase 1 brain abstraction.
+- **Stance via weapon-swap:** The existing `SLASH_tree` / `HEAVY_tree` sub-trees in the AnimationTree's `MovementStates` become MIDDLE and UPPER stances respectively. The Light movement set (idle, walk, run, strafe) is MIDDLE; the Heavy set is UPPER. `intent_change_stance` maps `Stance.MIDDLE → "SLASH"` and `Stance.UPPER → "HEAVY"` and calls the existing weapon-swap mechanism. No new animations needed — the stance-legibility risk resolves to "yes, immediately."
+- **This phase is still the early gate for stance legibility risk.** If MIDDLE and UPPER are not visibly distinct when playing the game, Phase 2 fails and no Phase 3 plan is written.
+- **Exit:** Move/sprint as before, plus: press stance-select and see the character visibly shift pose between UPPER (Heavy movement set) and MIDDLE (Light movement set). Press strike and see Slash1 (MIDDLE) or Heavy1 (UPPER) play. Sword held in hand throughout. Full design: `docs/superpowers/specs/2026-04-09-phase-2-animation-tree-integration-design.md`.
 
 ### Phase 3 — Strike resources + sim-clock timing
 - Create `Strike` resource class; author 2 Strike `.tres` files: `upper_horizontal`, `middle_horizontal`.
