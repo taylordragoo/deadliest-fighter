@@ -1,8 +1,9 @@
-[gd_scene load_steps=8 format=3 uid="uid://cj4pl4lt8s575"]
+[gd_scene load_steps=9 format=3 uid="uid://cj4pl4lt8s575"]
 
 [ext_resource type="PackedScene" uid="uid://cfighterbody2ph2" path="res://fighter/fighter_body.tscn" id="1_fighter_scene"]
 [ext_resource type="Script" path="res://fighter/brains/player_brain.gd" id="2_player_brain_script"]
 [ext_resource type="Script" path="res://fighter/fighter_cam.gd" id="3_fighter_cam_script"]
+[ext_resource type="Script" path="res://fighter/fighter_arena.gd" id="4_fighter_arena_script"]
 
 [sub_resource type="Environment" id="Environment_demo"]
 background_mode = 1
@@ -53,3 +54,8 @@ fighter_b_path = NodePath("../FighterB")
 
 [node name="PlayerBrain" type="Node" parent="FighterA"]
 script = ExtResource("2_player_brain_script")
+
+[node name="FighterArena" type="Node3D" parent="."]
+script = ExtResource("4_fighter_arena_script")
+fighter_a = NodePath("../FighterA")
+fighter_b = NodePath("../FighterB")

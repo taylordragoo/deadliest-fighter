@@ -157,6 +157,25 @@ func _ready() -> void:
 	if strike_middle:
 		STANCE_TO_STRIKE[Vector2i(Stance.MIDDLE, Strike.StrikeDir.SLASH_HORIZONTAL)] = strike_middle
 
+	# Auto-find weapon hitbox if not set via export
+	if weapon_hitbox == null:
+		var weapon_system := get_node_or_null("WeaponSystem")
+		if weapon_system:
+			for child in weapon_system.get_children():
+				weapon_hitbox = _find_first_area3d(child)
+				if weapon_hitbox:
+					break
+
+	# Auto-load strike resources if not set via export
+	if strike_upper == null:
+		strike_upper = load("res://fighter/strikes/upper_horizontal.tres")
+		if strike_upper:
+			STANCE_TO_STRIKE[Vector2i(Stance.UPPER, Strike.StrikeDir.SLASH_HORIZONTAL)] = strike_upper
+	if strike_middle == null:
+		strike_middle = load("res://fighter/strikes/middle_horizontal.tres")
+		if strike_middle:
+			STANCE_TO_STRIKE[Vector2i(Stance.MIDDLE, Strike.StrikeDir.SLASH_HORIZONTAL)] = strike_middle
+
 	# Connect weapon hitbox body_entered
 	if weapon_hitbox:
 		weapon_hitbox.monitoring = false
@@ -473,6 +492,16 @@ func execute_strike(stance: int, dir: int) -> void:
 func _arm_weapon(armed: bool) -> void:
 	if weapon_hitbox:
 		weapon_hitbox.monitoring = armed
+
+## Walk a subtree to find the first Area3D descendant.
+func _find_first_area3d(node: Node) -> Area3D:
+	if node is Area3D:
+		return node
+	for child in node.get_children():
+		var found := _find_first_area3d(child)
+		if found:
+			return found
+	return null
 
 ## Dev-time only: awaits animation_measured and warns if declared strike
 ## timing diverges from the actual animation length by >20%. Fire-and-forget —
