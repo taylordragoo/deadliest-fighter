@@ -35,9 +35,9 @@ func _run_all_tests_async() -> void:
 		return
 
 	var demo: Node3D = demo_scene.instantiate()
-	get_root().add_child(demo)
+	root.add_child(demo)
 	# Allow one frame for _ready() to run on all nodes
-	await get_tree().process_frame
+	await process_frame
 
 	var fighter_a: FighterBody = demo.get_node_or_null("FighterA") as FighterBody
 	var fighter_b: FighterBody = demo.get_node_or_null("FighterB") as FighterBody

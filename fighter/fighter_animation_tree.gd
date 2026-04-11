@@ -148,4 +148,3 @@ func set_free_move() -> void:
 func _on_animation_started(anim_name: String) -> void:
 	anim_length = (get_node(anim_player) as AnimationPlayer).get_animation(anim_name).length
 	animation_measured.emit(anim_length)
-

@@ -5,8 +5,14 @@
 extends Node3D
 class_name FighterArena
 
-@export var fighter_a: FighterBody
-@export var fighter_b: FighterBody
+## NodePaths to the two fighters, resolved in _ready(). Godot 4 does not
+## auto-resolve typed Node exports from serialised NodePath strings in scene
+## files, so we use NodePath exports and resolve manually (same pattern as
+## FighterCam and FighterBody.opponent_path).
+@export var fighter_a_path: NodePath
+@export var fighter_b_path: NodePath
+var fighter_a: FighterBody
+var fighter_b: FighterBody
 
 ## Time to wait after a death before resetting (seconds).
 @export var reset_delay: float = 2.0
@@ -18,6 +24,11 @@ var _spawn_b: Transform3D
 var _resetting: bool = false
 
 func _ready() -> void:
+	if fighter_a == null and not fighter_a_path.is_empty():
+		fighter_a = get_node_or_null(fighter_a_path) as FighterBody
+	if fighter_b == null and not fighter_b_path.is_empty():
+		fighter_b = get_node_or_null(fighter_b_path) as FighterBody
+
 	if fighter_a:
 		_spawn_a = fighter_a.global_transform
 		fighter_a.death_started.connect(_on_fighter_died.bind(fighter_a))

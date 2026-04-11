@@ -57,5 +57,5 @@ script = ExtResource("2_player_brain_script")
 
 [node name="FighterArena" type="Node3D" parent="."]
 script = ExtResource("4_fighter_arena_script")
-fighter_a = NodePath("../FighterA")
-fighter_b = NodePath("../FighterB")
+fighter_a_path = NodePath("../FighterA")
+fighter_b_path = NodePath("../FighterB")
