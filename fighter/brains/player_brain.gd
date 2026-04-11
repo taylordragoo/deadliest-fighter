@@ -46,4 +46,9 @@ func _physics_process(_delta: float) -> void:
 
 	# Strike (rising edge)
 	if Input.is_action_just_pressed(_strike):
-		fighter.intent_strike()
+		# Read the fighter's resolved stance, not raw input.
+		# STANCE_TO_WEAPON maps Stance → weapon_type; invert to get current Stance.
+		var current_stance: int = FighterBody.STANCE_TO_WEAPON.find_key(fighter.weapon_type)
+		if current_stance == null:
+			current_stance = FighterBody.Stance.MIDDLE
+		fighter.intent_strike(current_stance, Strike.StrikeDir.SLASH_HORIZONTAL)
