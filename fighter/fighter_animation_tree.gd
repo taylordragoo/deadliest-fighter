@@ -10,7 +10,6 @@ class_name FighterAnimationTree
 @onready var current_weapon_tree: AnimationNodeStateMachinePlayback
 @onready var weapon_type: String = "SLASH"
 @onready var attack_count: int = 1
-@onready var attack_timer: Timer = Timer.new()
 @onready var hurt_count: int = 1
 @onready var anim_length: float
 
@@ -28,10 +27,6 @@ var interact_type: String = "GENERIC"
 signal animation_measured
 
 func _ready() -> void:
-	add_child(attack_timer)
-	attack_timer.one_shot = true
-	attack_timer.timeout.connect(_on_attack_timer_timeout)
-
 	if not fighter_node:
 		push_warning(str(self) + ": fighter_node must be set")
 		return
@@ -43,9 +38,7 @@ func _ready() -> void:
 
 	fighter_node.weapon_change_started.connect(_on_weapon_change_started)
 	fighter_node.weapon_change_ended.connect(_on_weapon_change_ended)
-	fighter_node.attack_started.connect(_on_attack_started)
-	fighter_node.big_attack_started.connect(_on_big_attack_started)
-	fighter_node.air_attack_started.connect(_on_air_attack_started)
+	fighter_node.strike_started.connect(_on_strike_started)
 
 	fighter_node.parry_started.connect(_on_parry_started)
 	fighter_node.hurt_started.connect(_on_hurt_started)
@@ -82,28 +75,15 @@ func set_guarding() -> void:
 func _on_parry_started() -> void:
 	request_oneshot("Parry")
 
-func _on_attack_started() -> void:
-	request_oneshot("Attack")
-	await animation_measured
-	attack_timer.start(anim_length + 0.2)
-	match attack_count:
-		1:
-			attack_count = 2
-		2:
-			attack_count = 1
-
-func _on_big_attack_started() -> void:
-	attack_count = 3
-	request_oneshot("Attack")
-	await animation_measured
-	attack_timer.start(anim_length + 0.2)
-	attack_count = 2
-
-func _on_air_attack_started() -> void:
-	attack_count = 4
-	request_oneshot("Attack")
-	await animation_measured
-	attack_timer.start(0.1)
+func _on_strike_started(strike: Strike) -> void:
+	# Set attack_count to select the correct animation in the ATTACK sub-tree.
+	# The serialized AnimationTree graph has advance_expressions like
+	# "attack_count == 1" on transitions to Slash1/Heavy1, "attack_count == 2"
+	# for Slash2/Heavy2, etc. Phase 3 always uses the first attack animation
+	# (attack_count = 1). Future phases can add a field to the Strike resource
+	# to select a specific animation variant.
+	attack_count = 1
+	request_oneshot(strike.animation_name)
 
 func _on_block_started() -> void:
 	request_oneshot("Block")
@@ -140,6 +120,13 @@ func _on_weapon_change_ended(_new_weapon_type: String) -> void:
 		weapon_type = "SLASH"
 	current_weapon_tree = get("parameters/MovementStates/" + str(_new_weapon_type) + "_tree/playback") as AnimationNodeStateMachinePlayback
 
+## Called by FighterBody.reset_for_round() to return the animation tree
+## from any state (including Death) to idle with the given weapon type.
+func reset_to_idle(reset_weapon_type: String) -> void:
+	# Travel back to the movement states — this leaves Death, Hurt, or any oneshot.
+	base_state_machine.travel(reset_weapon_type + "_tree")
+	_on_weapon_change_ended(reset_weapon_type)
+
 func set_strafe() -> void:
 	var new_blend := Vector2(fighter_node.strafe_cross_product, fighter_node.move_dot_product)
 	if fighter_node.current_state == fighter_node.state.DYNAMIC_ACTION:
@@ -162,5 +149,3 @@ func _on_animation_started(anim_name: String) -> void:
 	anim_length = (get_node(anim_player) as AnimationPlayer).get_animation(anim_name).length
 	animation_measured.emit(anim_length)
 
-func _on_attack_timer_timeout() -> void:
-	attack_count = 1
