@@ -31,11 +31,6 @@ signal weapon_change_started
 signal weapon_changed
 signal weapon_change_ended
 
-# --- Attack signals (souls template pattern: started → activated → ended) ---
-signal attack_started
-signal attack_activated
-signal air_attack_started
-signal big_attack_started
 var attack_combo_timer: Timer = Timer.new()
 
 # --- Strike system (Phase 3: sim-clock authoritative) ---
@@ -661,7 +656,10 @@ func start_guard() -> void:
 	guarding = true
 	parry_active = true
 	current_state = state.DYNAMIC_ACTION
+	var round_at_start := _round_id
 	await get_tree().create_timer(parry_window).timeout
+	if _round_id != round_at_start:
+		return
 	parry_active = false
 
 func end_guard() -> void:
