@@ -38,6 +38,30 @@ signal air_attack_started
 signal big_attack_started
 var attack_combo_timer: Timer = Timer.new()
 
+# --- Strike system (Phase 3: sim-clock authoritative) ---
+## Current Strike resource being executed (null when not striking)
+var current_strike: Strike = null
+
+## Stance → Strike resource lookup. Loaded in _ready().
+var STANCE_TO_STRIKE: Dictionary = {}
+
+## Preloaded strike resources
+@export var strike_upper: Strike
+@export var strike_middle: Strike
+
+## Reference to the weapon Area3D for hitbox control.
+## Set via export to WeaponSystem/RightHand/HandPivot/Sword in the scene.
+@export var weapon_hitbox: Area3D
+
+## Round ID — incremented on every round reset. In-flight coroutines
+## (execute_strike, hurt, parry, etc.) capture this at start and bail
+## if it changes, preventing stale timers from corrupting the next round.
+var _round_id: int = 0
+
+signal strike_started(strike: Strike)
+signal strike_activated(strike: Strike)
+signal strike_ended(strike: Strike)
+
 # --- Guard / parry (Phase 5 wires these; kept so hit() compiles) ---
 @onready var guarding: bool = false
 @onready var can_be_hurt: bool = true
@@ -104,7 +128,7 @@ signal strafe_toggled
 @export var engage_facing_dot: float = 0.6
 
 # --- State machine ---
-enum state { SPAWN, FREE, STATIC_ACTION, DYNAMIC_ACTION, DODGE, SPRINT, ATTACK }
+enum state { SPAWN, FREE, STATIC_ACTION, DYNAMIC_ACTION, DODGE, SPRINT, WINDING_UP, STRIKING, RECOVERING, HURT, DEAD }
 @onready var current_state: int = state.STATIC_ACTION : set = change_state
 signal changed_state
 
@@ -125,6 +149,28 @@ func _ready() -> void:
 
 	add_child(attack_combo_timer)
 	attack_combo_timer.one_shot = true
+
+	# Build (stance, dir) → strike lookup. Key is Vector2i(Stance, StrikeDir).
+	# Phase 3: only SLASH_HORIZONTAL. Future dirs add more entries, no code change.
+	if strike_upper:
+		STANCE_TO_STRIKE[Vector2i(Stance.UPPER, Strike.StrikeDir.SLASH_HORIZONTAL)] = strike_upper
+	if strike_middle:
+		STANCE_TO_STRIKE[Vector2i(Stance.MIDDLE, Strike.StrikeDir.SLASH_HORIZONTAL)] = strike_middle
+
+	# Connect weapon hitbox body_entered
+	if weapon_hitbox:
+		weapon_hitbox.monitoring = false
+		weapon_hitbox.body_entered.connect(_on_weapon_body_entered)
+
+	# Ensure this fighter is in the "Targets" group so opponents' weapon
+	# Area3Ds can detect it. The hit contract requires both the Targets
+	# physics layer (layer 3) and the "Targets" group.
+	if not is_in_group("Targets"):
+		add_to_group("Targets")
+
+	# Add collision layer 3 (Targets) so opponent sword Area3Ds can detect this body.
+	# Layer 2 (Player) is kept from the scene file.
+	collision_layer |= (1 << 2)  # layer 3 (0-indexed bit 2)
 
 	# Resolve opponent from NodePath — synchronous because siblings are
 	# already in the tree when _ready() runs (Godot adds children depth-first).
@@ -158,6 +204,16 @@ func change_state(new_state: int) -> void:
 			speed = walk_speed
 		state.STATIC_ACTION:
 			speed = 0.0
+		state.WINDING_UP:
+			speed = 0.0
+		state.STRIKING:
+			speed = 0.0
+		state.RECOVERING:
+			speed = 0.0
+		state.HURT:
+			speed = 0.0
+		state.DEAD:
+			speed = 0.0
 
 # =========================================================================
 # Intent surface (called by FighterBrain subclasses)
@@ -181,6 +237,9 @@ func intent_sprint(held: bool) -> void:
 
 ## Rising-edge: request a stance change.
 func intent_change_stance(stance: int) -> void:
+	# Cannot change stance while executing a strike
+	if current_state in [state.WINDING_UP, state.STRIKING, state.RECOVERING]:
+		return
 	if stance not in STANCE_TO_WEAPON:
 		return  # LOWER, SHEATHED are no-ops at Phase 2
 	var new_weapon: String = STANCE_TO_WEAPON[stance]
@@ -188,13 +247,25 @@ func intent_change_stance(stance: int) -> void:
 		return
 	weapon_type = new_weapon
 	if anim_state_tree:
-		# Bypass weapon_change_started (no sheath/draw animation — instant swap)
 		anim_state_tree._on_weapon_change_ended(weapon_type)
 
-## Rising-edge: request a strike.
-func intent_strike() -> void:
-	if current_state == state.FREE:
-		attack()
+## Rising-edge: request a strike with the given stance and direction.
+## Matches the spec's Brain→Fighter contract: intent_strike(stance, dir).
+## Phase 3: dir is always SLASH_HORIZONTAL. The parameter exists so the
+## contract is stable when directional strikes arrive later.
+func intent_strike(stance: int = -1, dir: int = Strike.StrikeDir.SLASH_HORIZONTAL) -> void:
+	# Accept strike from FREE or SPRINT. Sprinting auto-breaks lock
+	# and forces re-lock per spec § Movement sub-model.
+	if current_state == state.SPRINT:
+		current_state = state.FREE  # break sprint, re-lock
+	if current_state != state.FREE:
+		return
+	if stance < 0:
+		# Default: use current stance
+		stance = STANCE_TO_WEAPON.find_key(weapon_type)
+		if stance == null:
+			stance = Stance.MIDDLE
+	execute_strike(stance, dir)
 
 ## Rising-edge: request a parry. (Phase 5)
 func intent_parry() -> void:
@@ -230,8 +301,15 @@ func _physics_process(_delta: float) -> void:
 			dash_movement()
 			_freelook_rotate()
 
-		state.ATTACK:
+		state.WINDING_UP:
+			if opponent:
+				_face_opponent(0.15)
+
+		state.STRIKING:
 			dash_movement()
+
+		state.RECOVERING:
+			pass  # Frozen in place, vulnerable
 
 		state.DYNAMIC_ACTION:
 			if opponent and strafing:
@@ -332,33 +410,133 @@ func _calc_cam_direction() -> Vector3:
 	return forward_vector * input_dir.y + horizontal_vector * input_dir.x
 
 # =========================================================================
-# Attack (kept from souls template — Phase 3 replaces timer phasing)
+# Strike system (Phase 3 — sim-clock authoritative timing)
 # =========================================================================
 
-func attack(_is_special_attack: bool = false) -> void:
-	current_state = state.ATTACK
-	if _is_special_attack:
-		big_attack_started.emit()
-	else:
-		attack_started.emit()
-	if anim_state_tree:
-		await anim_state_tree.animation_measured
-	await get_tree().create_timer(anim_length * 0.3).timeout
-	attack_activated.emit()
-	dash(Vector3.FORWARD, 0.3)
-	await get_tree().create_timer(anim_length * 0.7).timeout
-	if current_state == state.ATTACK:
-		current_state = state.FREE
+func execute_strike(stance: int, dir: int) -> void:
+	# Look up strike by (stance, dir) composite key
+	var key := Vector2i(stance, dir)
+	var strike: Strike = STANCE_TO_STRIKE.get(key)
+	if strike == null:
+		return
 
-func air_attack() -> void:
-	air_attack_started.emit()
-	current_state = state.DYNAMIC_ACTION
+	current_strike = strike
+	var round_at_start := _round_id
+
+	# --- WINDING_UP ---
+	current_state = state.WINDING_UP
+
+	# Trigger animation via strike_started (visualization only — sim clock is authoritative).
+	# FighterAnimationTree._on_strike_started reads strike.animation_name to pick the oneshot.
+	strike_started.emit(strike)
+
+	# Dev-time timing comparison — fire-and-forget, does NOT block the sim clock.
 	if anim_state_tree:
-		await anim_state_tree.animation_measured
-	await get_tree().create_timer(anim_length * 0.5).timeout
-	attack_activated.emit()
-	await get_tree().create_timer(anim_length * 0.5).timeout
-	current_state = state.FREE
+		_check_strike_timing_async(strike)
+
+	# Sim-clock authoritative: wind_up_time governs, not anim_length.
+	await get_tree().create_timer(strike.wind_up_time).timeout
+
+	# Guard: bail if round reset or state changed (e.g. got hit during wind-up)
+	if _round_id != round_at_start or current_state != state.WINDING_UP:
+		current_strike = null
+		return
+
+	# --- STRIKING ---
+	current_state = state.STRIKING
+	strike_activated.emit(strike)
+	_arm_weapon(true)
+	dash(Vector3.FORWARD, min(strike.active_time, 0.3))
+
+	await get_tree().create_timer(strike.active_time).timeout
+
+	if _round_id != round_at_start or current_state != state.STRIKING:
+		_arm_weapon(false)
+		current_strike = null
+		return
+
+	_arm_weapon(false)
+
+	# --- RECOVERING ---
+	current_state = state.RECOVERING
+	strike_ended.emit(strike)
+
+	await get_tree().create_timer(strike.recover_time).timeout
+
+	if _round_id != round_at_start:
+		current_strike = null
+		return
+	if current_state == state.RECOVERING:
+		current_state = state.FREE
+	current_strike = null
+
+func _arm_weapon(armed: bool) -> void:
+	if weapon_hitbox:
+		weapon_hitbox.monitoring = armed
+
+## Dev-time only: awaits animation_measured and warns if declared strike
+## timing diverges from the actual animation length by >20%. Fire-and-forget —
+## this never blocks the sim clock.
+func _check_strike_timing_async(strike: Strike) -> void:
+	if not anim_state_tree:
+		return
+	await anim_state_tree.animation_measured
+	var declared_total := strike.wind_up_time + strike.active_time + strike.recover_time
+	if abs(anim_length - declared_total) / max(declared_total, 0.01) > 0.2:
+		push_warning("Strike '%s' timing mismatch: declared=%.2f anim=%.2f" % [
+			strike.strike_id, declared_total, anim_length])
+
+func _on_weapon_body_entered(body: Node3D) -> void:
+	if body == self:
+		return
+	if not body.is_in_group("Targets"):
+		return
+	if current_strike == null:
+		return
+	if current_state != state.STRIKING:
+		return
+
+	# Map FighterBody states to HitResolver's decoupled CombatState enum
+	var attacker_combat := _to_combat_state(current_state)
+	var target_combat := HitResolver.CombatState.IDLE
+	var target_can_be_hurt := true
+	if body is FighterBody:
+		target_combat = _to_combat_state(body.current_state)
+		target_can_be_hurt = body.can_be_hurt
+
+	var outcome := HitResolver.resolve(
+		current_strike,
+		attacker_combat,
+		target_combat,
+		target_can_be_hurt
+	)
+
+	if outcome["type"] == "HIT":
+		if body.has_method("hit"):
+			body.hit(self, outcome)
+		# Disarm after first hit to prevent multi-hit
+		_arm_weapon(false)
+
+## Map FighterBody's internal state enum to HitResolver.CombatState.
+## This is the single translation point — HitResolver never imports
+## FighterBody.state.
+static func _to_combat_state(fighter_state: int) -> int:
+	match fighter_state:
+		state.WINDING_UP:
+			return HitResolver.CombatState.WINDING_UP
+		state.STRIKING:
+			return HitResolver.CombatState.STRIKING
+		state.RECOVERING:
+			return HitResolver.CombatState.RECOVERING
+		state.DODGE:
+			return HitResolver.CombatState.DODGING
+		state.HURT:
+			return HitResolver.CombatState.HURT
+		state.DEAD:
+			return HitResolver.CombatState.DEAD
+		# Phase 5: add PARRYING mapping when parry state exists
+		_:
+			return HitResolver.CombatState.IDLE
 
 # =========================================================================
 # Dash / dodge / sprint (kept from souls template)
@@ -393,6 +571,10 @@ func dodge() -> void:
 	dodge_timer.start(anim_length * 0.7)
 
 func _on_dodge_timer_timeout() -> void:
+	# Guard: if we're no longer in DODGE (e.g., round reset changed state),
+	# don't mutate state.
+	if current_state != state.DODGE:
+		return
 	dodge_ended.emit()
 	speed = default_speed
 	current_state = state.FREE
@@ -424,9 +606,12 @@ func hard_landing() -> void:
 	current_state = state.STATIC_ACTION
 	landed_hard.emit()
 	anim_length = 0.4
+	var round_at_start := _round_id
 	if anim_state_tree:
 		await anim_state_tree.animation_measured
 	await get_tree().create_timer(anim_length).timeout
+	if _round_id != round_at_start:
+		return
 	if current_state == state.STATIC_ACTION:
 		current_state = state.FREE
 
@@ -455,25 +640,42 @@ func end_guard() -> void:
 	parry_active = false
 	current_state = state.FREE
 
+## Hit contract — Phase 3+.
+## _who: the attacking FighterBody.
+## _by_what: HitOutcome Dictionary from HitResolver (single source of truth).
+## This method dispatches consequences only — it does NOT re-resolve.
 func hit(_who: Node, _by_what: Variant) -> void:
-	if can_be_hurt:
-		if parry_active:
-			parry()
-			if _who.has_method("parried"):
-				_who.parried()
-			return
-		elif guarding:
-			block()
-		else:
+	# Interrupt any in-progress strike
+	if current_state == state.WINDING_UP:
+		_arm_weapon(false)
+		current_strike = null
+
+	# Dispatch based on the resolved outcome type
+	if not (_by_what is Dictionary):
+		return
+	match _by_what.get("type"):
+		"HIT":
 			damage_taken.emit(_by_what)
-			hurt()
+			if _by_what.get("lethal", false):
+				death()
+			else:
+				hurt()
+		"PARRIED":
+			# Phase 5: attacker enters extended recovery
+			pass
+		"DODGED":
+			# Phase 5: no effect on target
+			pass
 
 func block() -> void:
 	current_state = state.STATIC_ACTION
 	block_started.emit()
+	var round_at_start := _round_id
 	if anim_state_tree:
 		await anim_state_tree.animation_measured
 	await get_tree().create_timer(anim_length).timeout
+	if _round_id != round_at_start:
+		return
 	if current_state == state.STATIC_ACTION:
 		current_state = state.DYNAMIC_ACTION
 
@@ -481,9 +683,12 @@ func parry() -> void:
 	current_state = state.STATIC_ACTION
 	can_be_hurt = false
 	parry_started.emit()
+	var round_at_start := _round_id
 	if anim_state_tree:
 		await anim_state_tree.animation_measured
 	await get_tree().create_timer(anim_length).timeout
+	if _round_id != round_at_start:
+		return
 	if current_state == state.STATIC_ACTION:
 		current_state = state.FREE
 	can_be_hurt = true
@@ -493,23 +698,56 @@ func parried() -> void:
 	pass
 
 func hurt() -> void:
-	current_state = state.STATIC_ACTION
+	current_state = state.HURT
 	can_be_hurt = false
 	hurt_started.emit()
+	var round_at_start := _round_id
 	if anim_state_tree:
 		await anim_state_tree.animation_measured
 	await get_tree().create_timer(anim_length).timeout
+	if _round_id != round_at_start:
+		return
 	if not is_dead:
-		if current_state == state.STATIC_ACTION:
+		if current_state == state.HURT:
 			current_state = state.FREE
 		can_be_hurt = true
 
 func death() -> void:
-	current_state = state.STATIC_ACTION
+	current_state = state.DEAD
 	can_be_hurt = false
 	is_dead = true
 	death_started.emit()
 	# Phase 6 handles round reset via FighterArena; no scene reload.
+
+## Called by FighterArena on round reset. Increments _round_id to
+## invalidate all in-flight async actions (execute_strike, hurt, parry, etc.),
+## stops all callback-driven timers, then restores all combat state to
+## round-start defaults.
+func reset_for_round(spawn_transform: Transform3D) -> void:
+	_round_id += 1
+
+	# Stop callback-driven timers so their timeout signals don't fire
+	# into the next round (these are NOT covered by _round_id — they
+	# trigger methods directly, not via awaited coroutines).
+	dodge_timer.stop()
+	sprint_timer.stop()
+	attack_combo_timer.stop()
+
+	global_transform = spawn_transform
+	velocity = Vector3.ZERO
+	direction = Vector3.ZERO
+	is_dead = false
+	can_be_hurt = true
+	guarding = false
+	parry_active = false
+	current_strike = null
+	_arm_weapon(false)
+	# Restore default stance (MIDDLE = "SLASH")
+	weapon_type = "SLASH"
+	current_state = state.FREE
+	# Reset animation tree out of Death (or any other state) back to idle
+	if anim_state_tree:
+		anim_state_tree.reset_to_idle("SLASH")
 
 # =========================================================================
 # Animation callback
