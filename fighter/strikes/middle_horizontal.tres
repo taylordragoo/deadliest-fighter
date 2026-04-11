@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Strike" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://fighter/strikes/strike.gd" id="1"]
+[ext_resource type="Script" path="res://fighter/strikes/damage_profile.gd" id="2"]
+
+[sub_resource type="Resource" id="dp_1"]
+script = ExtResource("2")
+hit_region_priority = Array[String](["torso", "arm_r", "arm_l", "head"])
+lethal_on_torso = true
+lethal_on_head = true
+limb_cripple = true
+
+[resource]
+script = ExtResource("1")
+strike_id = "middle_horizontal"
+hit_line = 1
+wind_up_time = 0.2
+active_time = 0.2
+recover_time = 0.3
+damage_profile = SubResource("dp_1")
+animation_name = "Attack"
