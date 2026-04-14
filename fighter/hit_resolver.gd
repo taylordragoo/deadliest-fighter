@@ -1,11 +1,14 @@
 # fighter/hit_resolver.gd
 # HitResolver — pure static function: strike context → HitOutcome.
-# Phase 4: routes hits to limbs via DamageProfile.hit_region_priority.
-# Determines lethality by limb identity + current integrity.
-# Phase 5 will add PARRIED/DODGED outcomes.
+# Phase 5: DODGED and PARRIED outcomes before limb routing.
+# DODGED: target in DODGING → unconditional.
+# PARRIED: target in PARRYING → optionally gated by stance_match_required.
+# Limb routing via DamageProfile.hit_region_priority (Phase 4).
 #
 # Returns a Dictionary (tagged union):
 #   { "type": "MISS" }
+#   { "type": "DODGED" }
+#   { "type": "PARRIED" }
 #   { "type": "HIT", "limb": "arm_r", "lethal": false, "new_integrity": 2 }
 #
 # Pure: reads inputs only, mutates nothing. Testable without engine.
@@ -31,12 +34,16 @@ enum CombatState {
 ## strike: the Strike resource being used.
 ## target_can_be_hurt: whether the target is currently vulnerable.
 ## target_limb_health: optional LimbHealth to read current limb integrity.
+## stance_match_required: when true, PARRIED only fires if target_stance_hit_line matches strike.hit_line.
+## target_stance_hit_line: target's current stance mapped to Strike.HitLine. -1 = skip stance check.
 static func resolve(
 	strike: Strike,
 	attacker_combat_state: int,
 	target_combat_state: int,
 	target_can_be_hurt: bool,
-	target_limb_health: LimbHealth = null
+	target_limb_health: LimbHealth = null,
+	stance_match_required: bool = false,
+	target_stance_hit_line: int = -1
 ) -> Dictionary:
 	# Attacker must be in STRIKING state
 	if attacker_combat_state != CombatState.STRIKING:
@@ -46,8 +53,18 @@ static func resolve(
 	if not target_can_be_hurt:
 		return { "type": "MISS" }
 
-	# Phase 5 will add: if target_combat_state == DODGING → DODGED
-	# Phase 5 will add: if target_combat_state == PARRYING → PARRIED check
+	# Dodge: unconditional i-frame defense
+	if target_combat_state == CombatState.DODGING:
+		return { "type": "DODGED" }
+
+	# Parry: active parry frames, optionally gated by stance match
+	if target_combat_state == CombatState.PARRYING:
+		if stance_match_required:
+			if target_stance_hit_line >= 0 and target_stance_hit_line == strike.hit_line:
+				return { "type": "PARRIED" }
+			# Stance mismatch: parry fails, strike resolves normally (fall through to limb routing)
+		else:
+			return { "type": "PARRIED" }
 
 	var dp := strike.damage_profile
 	if dp == null:
