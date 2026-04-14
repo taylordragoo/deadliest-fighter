@@ -61,6 +61,7 @@ signal strike_ended(strike: Strike)
 @onready var guarding: bool = false
 @onready var can_be_hurt: bool = true
 @onready var parry_active: bool = false
+var _parry_hit_line: int = -1
 var parry_window: float = 0.3
 
 # --- Parry timing (Phase 5, sim-clock authoritative) ---
@@ -522,6 +523,7 @@ func execute_strike(stance: int, dir: int) -> void:
 
 func execute_parry() -> void:
 	var round_at_start := _round_id
+	_parry_hit_line = _stance_to_hit_line()
 
 	# --- Parry startup (vulnerable, cannot act) ---
 	current_state = state.STATIC_ACTION
@@ -555,6 +557,7 @@ func execute_parry() -> void:
 func execute_dodge(dir: Vector2) -> void:
 	dodge_timer.stop()  # Cancel any stale souls-template dodge timer
 	var round_at_start := _round_id
+	var was_strafing := strafing
 
 	# --- Dodge startup (tiny, committed) ---
 	current_state = state.DODGE
@@ -562,7 +565,7 @@ func execute_dodge(dir: Vector2) -> void:
 
 	# Compute dodge direction
 	if dir.length_squared() > 0.01:
-		if opponent and strafing:
+		if opponent and was_strafing:
 			# Opponent-relative: dir.y negative = toward opponent, positive = away
 			var to_opp := (opponent.global_position - global_position).normalized()
 			to_opp.y = 0.0
@@ -651,7 +654,7 @@ func _on_weapon_body_entered(body: Node3D) -> void:
 		target_can_be_hurt = body.can_be_hurt
 		target_limbs = body.limb_health
 		target_stance_match = body.stance_match_required
-		target_hit_line = body._stance_to_hit_line()
+		target_hit_line = body._parry_hit_line
 
 	var outcome := HitResolver.resolve(
 		current_strike,
@@ -945,6 +948,7 @@ func reset_for_round(spawn_transform: Transform3D) -> void:
 	can_be_hurt = true
 	guarding = false
 	parry_active = false
+	_parry_hit_line = -1
 	current_strike = null
 	_arm_weapon(false)
 	limb_health.reset()
