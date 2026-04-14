@@ -321,7 +321,9 @@ func intent_parry() -> void:
 func intent_dodge(_dir: Vector2) -> void:
 	if limb_health.has_leg_cripple():
 		return
-	pass
+	if current_state != state.FREE:
+		return
+	execute_dodge(_dir)
 
 ## Toggle: sheathe/draw. Reserved; no-op at MVP.
 func intent_sheathe(_sheathed: bool) -> void:
@@ -550,6 +552,54 @@ func execute_parry() -> void:
 	if current_state == state.STATIC_ACTION:
 		current_state = state.FREE
 
+func execute_dodge(dir: Vector2) -> void:
+	dodge_timer.stop()  # Cancel any stale souls-template dodge timer
+	var round_at_start := _round_id
+
+	# --- Dodge startup (tiny, committed) ---
+	current_state = state.DODGE
+	dodge_started.emit()
+
+	# Compute dodge direction
+	if dir.length_squared() > 0.01:
+		if opponent and strafing:
+			# Opponent-relative: dir.y negative = toward opponent, positive = away
+			var to_opp := (opponent.global_position - global_position).normalized()
+			to_opp.y = 0.0
+			var right := to_opp.cross(Vector3.UP).normalized()
+			direction = (to_opp * (-dir.y) + right * dir.x).normalized()
+		else:
+			direction = _calc_cam_direction().normalized()
+	else:
+		# No input: dodge backward (away from opponent if strafing)
+		if opponent:
+			direction = (global_position - opponent.global_position).normalized()
+			direction.y = 0.0
+		else:
+			direction = -global_transform.basis.z
+	speed = dodge_speed
+
+	await get_tree().create_timer(dodge_startup).timeout
+	if _round_id != round_at_start:
+		return
+
+	# --- Active dodge (movement) ---
+	await get_tree().create_timer(dodge_active_time).timeout
+	if _round_id != round_at_start:
+		return
+
+	# --- Dodge recovery (slow down) ---
+	direction = Vector3.ZERO
+	speed = default_speed
+
+	await get_tree().create_timer(dodge_recovery_time).timeout
+	if _round_id != round_at_start:
+		return
+
+	if current_state == state.DODGE:
+		dodge_ended.emit()
+		current_state = state.FREE
+
 func _arm_weapon(armed: bool) -> void:
 	if weapon_hitbox:
 		weapon_hitbox.monitoring = armed
@@ -627,9 +677,6 @@ func _on_weapon_body_entered(body: Node3D) -> void:
 		"MISS":
 			pass
 
-## Map FighterBody's internal state enum to HitResolver.CombatState.
-## This is the single translation point — HitResolver never imports
-## FighterBody.state.
 ## Map current weapon_type to Strike.HitLine for parry stance matching.
 ## SLASH (MIDDLE) → MID, HEAVY (UPPER) → HIGH.
 func _stance_to_hit_line() -> int:
@@ -641,6 +688,9 @@ func _stance_to_hit_line() -> int:
 		_:
 			return Strike.HitLine.MID
 
+## Map FighterBody's internal state enum to HitResolver.CombatState.
+## This is the single translation point — HitResolver never imports
+## FighterBody.state.
 static func _to_combat_state(fighter_state: int) -> int:
 	match fighter_state:
 		state.WINDING_UP:
