@@ -224,6 +224,64 @@ func _init() -> void:
 		results.append("FAIL: middle_horizontal routing — got %s" % str(r))
 
 	# ================================================================
+	# Test group 8: DODGED outcome
+	# ================================================================
+
+	# Target is DODGING → DODGED regardless of strike or stance
+	r = HitResolver.resolve(strike_torso, CS.STRIKING, CS.DODGING, true, limbs_ok)
+	if r["type"] == "DODGED":
+		pass_count += 1
+		results.append("PASS: target DODGING = DODGED")
+	else:
+		fail_count += 1
+		results.append("FAIL: target DODGING — got %s" % str(r))
+
+	# ================================================================
+	# Test group 9: PARRIED outcome (timing-only, no stance match)
+	# ================================================================
+
+	# Target is PARRYING, stance_match_required = false → always PARRIED
+	r = HitResolver.resolve(strike_torso, CS.STRIKING, CS.PARRYING, true, limbs_ok, false, -1)
+	if r["type"] == "PARRIED":
+		pass_count += 1
+		results.append("PASS: target PARRYING, no stance match = PARRIED")
+	else:
+		fail_count += 1
+		results.append("FAIL: target PARRYING, no stance match — got %s" % str(r))
+
+	# ================================================================
+	# Test group 10: PARRIED with stance match
+	# ================================================================
+
+	# strike_torso has hit_line = MID (default). Target stance = MID → PARRIED
+	var strike_mid := Strike.new()
+	strike_mid.strike_id = "test_mid"
+	strike_mid.hit_line = Strike.HitLine.MID
+	strike_mid.damage_profile = dp_torso
+
+	r = HitResolver.resolve(strike_mid, CS.STRIKING, CS.PARRYING, true, limbs_ok, true, Strike.HitLine.MID)
+	if r["type"] == "PARRIED":
+		pass_count += 1
+		results.append("PASS: stance match MID == MID = PARRIED")
+	else:
+		fail_count += 1
+		results.append("FAIL: stance match MID == MID — got %s" % str(r))
+
+	# Stance mismatch: strike HIGH, target MID → falls through to HIT (not PARRIED)
+	var strike_high := Strike.new()
+	strike_high.strike_id = "test_high"
+	strike_high.hit_line = Strike.HitLine.HIGH
+	strike_high.damage_profile = dp_torso
+
+	r = HitResolver.resolve(strike_high, CS.STRIKING, CS.PARRYING, true, limbs_ok, true, Strike.HitLine.MID)
+	if r["type"] == "HIT":
+		pass_count += 1
+		results.append("PASS: stance mismatch HIGH vs MID = HIT (parry fails)")
+	else:
+		fail_count += 1
+		results.append("FAIL: stance mismatch HIGH vs MID — got %s" % str(r))
+
+	# ================================================================
 	# Print results
 	# ================================================================
 
