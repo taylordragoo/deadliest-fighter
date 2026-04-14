@@ -137,6 +137,7 @@ func _on_round_phase_changed(phase: int, round_num: int) -> void:
 			_phase_timer = 1.0
 		FighterArena.Phase.RESULT:
 			_phase_label.text = "Slain!"
+			_update_score()
 	queue_redraw()
 
 func _update_score() -> void:

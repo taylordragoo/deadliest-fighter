@@ -119,17 +119,23 @@ func _on_fighter_died(dead_fighter: FighterBody) -> void:
 
 	var flow_at_start := _flow_id
 
-	# Determine winner
+	# Determine winner — check for mutual kill (both dead)
 	var winner: FighterBody = null
 	var loser: FighterBody = dead_fighter
-	if dead_fighter == fighter_a:
-		winner = fighter_b
-		wins_b += 1
-	elif dead_fighter == fighter_b:
-		winner = fighter_a
-		wins_a += 1
+	var other: FighterBody = fighter_b if dead_fighter == fighter_a else fighter_a
+	if other.is_dead:
+		# Mutual kill: no winner, no score credit
+		winner = null
+		loser = null
+	else:
+		if dead_fighter == fighter_a:
+			winner = fighter_b
+			wins_b += 1
+		elif dead_fighter == fighter_b:
+			winner = fighter_a
+			wins_a += 1
 
-	# Freeze the surviving fighter
+	# Freeze the surviving fighter (or both if mutual kill)
 	if winner:
 		winner.freeze()
 
