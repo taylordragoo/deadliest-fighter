@@ -1,0 +1,142 @@
+A - LOW ATTACK
+X- MID ATTACK 
+Y - HIGH ATTACK
+B - RANGED ATTACK
+RB - POWER ATTACK
+LB - CHANGE WEAPON (swaps between short and medium ranged weapons)
+LT/RT - BLOCK
+L3 - PICK UP/BREAK THROWN WEAPONS ON THE GROUND
+D PAD/LEFT ANALOG STICK- MOVE
+RIGHT ANALOG STICK- DODGE
+START- PAUSE MENU
+
+.................................< OVERVIEW >............................(2.0)
+
+Deadliest Warrior is based on a popular Spike tv series in which two very 
+different warriors are put to the test to discover which one would win in a 
+one on one fight. The game is a variation of a fighting game in which you 
+play the role of a warrior from the show and battle other warriors in a 
+semi-gladiator style battle.
+
+Players can play singlplayer modes, such as arcade mode and battle mode, or
+multiplayer, local or online. There are three difficulty modes to choose from 
+(normal, hard, and deadliest). The game has trophy support and a good deal of 
+unlockable equipment, which can keep you busy for a while. Also, there is to 
+be several packs of downloadable content starting early 2011. 
+ 
+.................................< GAMEPLAY >............................(3.0)
+
+Gameplay is not your standard fighting game fare. For starters, the damage 
+is very high so you have to be carful not to get hit. Also, many things can 
+cause you to straight die, such as having your sword arm, head, or legs cut 
+off (or getting hit in the head with any manner of ranged weapon). Timing is 
+everything and it is important to learn some defensive skills, like parrying   
+and dodging, if you plan on doing well. It is most important that you know 
+your warrior and play to his strengths. 
+
+-------------------< CLASSES >--------------------------------------(3.1)
+
+There are three classes of warrior listed in the game. These are only a basic 
+disciption of how a warrior will fight. There are still many other variables 
+to consider when playing. I'll go over these in more depth in the warriors 
+section.
+
+CHAMPIONS: Balanced fighters with high armor and decent 
+damage, but have slower movement speed.
+(Spartan, Centurian, Knight, Samurai)
+
+BERZERKERS: Heavy damage and moderate speed. Higher 
+capacity for dodging, but lower armor.
+(Pirate, Viking)
+
+GEURRILLAS: Low damage but high speed, capable of
+tumbling, practically no armor. 
+(Apache, Ninja) 
+
+----------------------------< OFFENSE >-----------------------------(3.2.0)
+
+In order to win in any fighting game your gonna have to go on the offense.
+In Deadliest Warrior there are many ways to go about this. You can stab.
+You can slash. You can even beat your enemies heads in. Here is all you 
+need to know about the offense systems.
+
+=======================< ATTACK RANGES >======================(3.2.1)
+
+SHORT RANGE: Uses your short range weapon, fastest of the
+attacks but as the title states range is short.
+(swords, knives, etc...)
+
+MEDIUM RANGE: Uses your mid range weapon, slower but keeps
+your opponent at bay, higher damage.
+(polearms, spears, etc...) 
+
+LONG RANGE: Uses your long range weapon, can do substantial damage but 
+is relativly easy to dodge, some ranged weapons have poison which
+damages over time. With thrown weapons if the attack misses or is blocked
+you can recover the weapon with the L3 button. Also, if your opponent misses 
+or you block his attack you can break his weapon so he cannot pick it up.
+(bows, javalins, etc...)
+
+If your opponent has a shield he'll be able to block all incoming ranged
+weapons with minimum damage. You may want to try and break his shield arm 
+to open up his defense. Otherwise, wait for the opertune moment to strike. 
+
+ALTERNATE: Each warrior has a special weapon they can use. This
+attack is unblockable and can trigger an instant kill if used at the right 
+moment. 
+(special weapon depends on the warrior)
+
+=======================< ATTACK ZONES >=======================(3.2.2)
+
+HIGH: targets the head doing a good deal of damage, has
+the chance to decapitate, 
+
+MIDDLE: Targets the torso doing moderate damage, chance to 
+damage or amputate arms causing the opponent to lose the use
+of certain abilities, such as shields and ranged attacks. 
+
+LOW: Targets the legs doing lower damage, chance to damage
+or amputate legs, damaged legs slow the opponent down and 
+take away his ability to dodge, amputated legs are an instant
+kill as your opponent can't walk.
+
+=======================< ATTACK TYPES >=======================(3.2.3)
+
+BASHING: Good against armored opponents and those with shields,
+usually has some manner of knockback, makes a great squishy bone
+crunching smack when it hits opponents. 
+(cannot cut off limbs)
+
+SLASHING: Not very effective against armored opponents, but is 
+great for carving them up. (chop-em up)
+
+PIERCING: Effective against most armor types, can cause a lot of
+damage especially when connecting with the face or chest. 
+(cannot cut off limbs)
+
+EXPLOSIVE: Exclusive to the pirate, effective against everyting,
+(send limbs flying)
+
+Each warrior also has a special finish that they can perform by 
+using their special attack when the opponents lifebar is critcal.
+This is signaled by a heart beating sound and the lifebar glowing red.
+These can be pretty entertaining, not to mention frustrating for your 
+friends.
+
+-------------------< DEFENSE >--------------------------------------(3.3)
+
+PARRY: stuns your opponent and sets them up for an attack.
+You won't be able to parry if you have a shield, only if 
+you have just a weapon out.
+
+(While blocking press a non ranged attack button just as your 
+opponent strikes your block) 
+
+DODGE: Using the right stick (or the left one if your in a block stance)
+you can dodge incoming attacks. Different warriors have varying dodge skills
+ranging from a slight sidestep to all out gymnastics. With the 
+
+BLOCK: Blocking itself is pretty simple, just hold down R2 or L2 to block.
+However, it does get more complicated. If you don't have a shield you can't
+block incoming ranged attacks. You can't block immediatly after an attack 
+combo, and you can't block while getting hit.
