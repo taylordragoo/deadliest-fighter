@@ -71,6 +71,12 @@ signal damage_taken
 signal death_started
 var is_dead: bool = false
 
+var limb_health: LimbHealth = LimbHealth.new()
+signal limb_state_changed(limb: String, new_state: int)
+
+var _base_default_speed: float
+var _base_sprint_speed: float
+
 # --- Shims for dormant AnimationTree advance_expressions ---
 # The forked scene's AnimationTree graph has advance_expressions that
 # reference fighter_node properties from stripped systems. These sub-graphs
@@ -132,6 +138,9 @@ signal changed_state
 # =========================================================================
 
 func _ready() -> void:
+	_base_default_speed = default_speed
+	_base_sprint_speed = sprint_speed
+
 	if anim_state_tree:
 		anim_state_tree.animation_measured.connect(_on_animation_measured)
 
@@ -240,6 +249,8 @@ func intent_move(dir: Vector2) -> void:
 ## Continuous: sprint held/released. Holding breaks lock.
 func intent_sprint(held: bool) -> void:
 	if held:
+		if limb_health.has_leg_cripple():
+			return
 		if current_state == state.FREE:
 			current_state = state.SPRINT
 			sprint_started.emit()
@@ -251,7 +262,8 @@ func intent_sprint(held: bool) -> void:
 
 ## Rising-edge: request a stance change.
 func intent_change_stance(stance: int) -> void:
-	# Cannot change stance while executing a strike
+	if limb_health.has_weapon_arm_cripple():
+		return
 	if current_state in [state.WINDING_UP, state.STRIKING, state.RECOVERING]:
 		return
 	if stance not in STANCE_TO_WEAPON:
@@ -279,6 +291,8 @@ func intent_strike(stance: int = -1, dir: int = Strike.StrikeDir.SLASH_HORIZONTA
 		stance = STANCE_TO_WEAPON.find_key(weapon_type)
 		if stance == null:
 			stance = Stance.MIDDLE
+	if limb_health.has_weapon_arm_cripple():
+		stance = Stance.MIDDLE
 	execute_strike(stance, dir)
 
 ## Rising-edge: request a parry. (Phase 5)
@@ -287,6 +301,8 @@ func intent_parry() -> void:
 
 ## Rising-edge: request a dodge. (Phase 5)
 func intent_dodge(_dir: Vector2) -> void:
+	if limb_health.has_leg_cripple():
+		return
 	pass
 
 ## Toggle: sheathe/draw. Reserved; no-op at MVP.
@@ -524,15 +540,18 @@ func _on_weapon_body_entered(body: Node3D) -> void:
 	var attacker_combat := _to_combat_state(current_state)
 	var target_combat := HitResolver.CombatState.IDLE
 	var target_can_be_hurt := true
+	var target_limbs: LimbHealth = null
 	if body is FighterBody:
 		target_combat = _to_combat_state(body.current_state)
 		target_can_be_hurt = body.can_be_hurt
+		target_limbs = body.limb_health
 
 	var outcome := HitResolver.resolve(
 		current_strike,
 		attacker_combat,
 		target_combat,
-		target_can_be_hurt
+		target_can_be_hurt,
+		target_limbs
 	)
 
 	if outcome["type"] == "HIT":
@@ -672,27 +691,48 @@ func end_guard() -> void:
 ## _by_what: HitOutcome Dictionary from HitResolver (single source of truth).
 ## This method dispatches consequences only — it does NOT re-resolve.
 func hit(_who: Node, _by_what: Variant) -> void:
-	# Interrupt any in-progress strike
 	if current_state == state.WINDING_UP:
 		_arm_weapon(false)
 		current_strike = null
 
-	# Dispatch based on the resolved outcome type
 	if not (_by_what is Dictionary):
 		return
 	match _by_what.get("type"):
 		"HIT":
+			var limb: String = _by_what.get("limb", "torso")
+			var new_integrity: int = _by_what.get("new_integrity", LimbHealth.Integrity.OK)
+			var old_integrity: int = limb_health.get_integrity(limb)
+			if new_integrity != old_integrity:
+				limb_health.set_integrity(limb, new_integrity)
+				limb_state_changed.emit(limb, new_integrity)
+				_apply_cripple_effects(limb, new_integrity)
+
 			damage_taken.emit(_by_what)
 			if _by_what.get("lethal", false):
 				death()
 			else:
 				hurt()
 		"PARRIED":
-			# Phase 5: attacker enters extended recovery
 			pass
 		"DODGED":
-			# Phase 5: no effect on target
 			pass
+
+
+func _apply_cripple_effects(limb: String, new_integrity: int) -> void:
+	match limb:
+		"leg_r", "leg_l":
+			if new_integrity == LimbHealth.Integrity.CRIPPLED:
+				default_speed = _base_default_speed * 0.5
+				sprint_speed = _base_default_speed * 0.5
+				speed = min(speed, default_speed)
+				if current_state == state.SPRINT:
+					current_state = state.FREE
+		"arm_r":
+			if new_integrity == LimbHealth.Integrity.CRIPPLED:
+				if weapon_type != "SLASH":
+					weapon_type = "SLASH"
+					if anim_state_tree:
+						anim_state_tree._on_weapon_change_ended("SLASH")
 
 func block() -> void:
 	current_state = state.STATIC_ACTION
@@ -769,6 +809,12 @@ func reset_for_round(spawn_transform: Transform3D) -> void:
 	parry_active = false
 	current_strike = null
 	_arm_weapon(false)
+	limb_health.reset()
+	default_speed = _base_default_speed
+	sprint_speed = _base_sprint_speed
+	speed = default_speed
+	for limb_name in LimbHealth.LIMB_NAMES:
+		limb_state_changed.emit(limb_name, LimbHealth.Integrity.OK)
 	# Restore default stance (MIDDLE = "SLASH")
 	weapon_type = "SLASH"
 	current_state = state.FREE
