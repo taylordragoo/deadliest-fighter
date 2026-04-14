@@ -268,14 +268,12 @@ func intent_sprint(held: bool) -> void:
 	if held:
 		if limb_health.has_leg_cripple():
 			return
-		if current_state == state.FREE:
+		if current_state == state.FREE and input_dir.length_squared() > 0.01:
 			current_state = state.SPRINT
 			sprint_started.emit()
 	else:
 		if current_state == state.SPRINT:
-			if _should_re_engage_lock():
-				current_state = state.FREE
-			# else: stay in SPRINT, checked again next frame
+			current_state = state.FREE
 
 ## Rising-edge: request a stance change.
 func intent_change_stance(stance: int) -> void:
@@ -350,7 +348,10 @@ func _physics_process(_delta: float) -> void:
 
 		state.DODGE:
 			dash_movement()
-			_freelook_rotate()
+			if opponent:
+				_face_opponent(0.25)
+			else:
+				_freelook_rotate()
 
 		state.WINDING_UP:
 			if opponent:
