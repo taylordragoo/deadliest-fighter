@@ -4,7 +4,7 @@
 
 **Goal:** Implement the two defensive verbs (parry and dodge) so that the combat loop has both offensive and defensive options. Parry reflects a strike back onto the attacker as extended recovery (the punish window). Dodge grants i-frames throughout its animation, giving positional advantage. HitResolver gains `PARRIED` and `DODGED` outcome types. A `stance_match_required` flag on FighterBody is wired but ships as `false` (timing-only parry at MVP).
 
-**Architecture:** `intent_parry()` enters a new sim-clock-driven coroutine: WINDING_UP-like startup → PARRYING (active parry frames) → brief recovery back to FREE. The parry window is a declared duration on FighterBody, not animation-driven. `intent_dodge()` enters the existing DODGE state with i-frames (can_be_hurt = false) throughout, using sim-clock timing. HitResolver.resolve() adds two checks before limb routing: target DODGING → return DODGED; target PARRYING → check stance match (if enabled) → return PARRIED. FighterBody.hit() dispatches PARRIED outcomes by calling `parried()` on the attacker, which enters extended RECOVERING. PlayerBrain gains `p0_parry` and `p0_dodge` input bindings.
+**Architecture:** `intent_parry()` enters a new sim-clock-driven coroutine: startup → PARRYING (active parry frames) → brief recovery back to FREE. The parry window is a declared duration on FighterBody, not animation-driven. `intent_dodge()` enters the existing DODGE state, using sim-clock timing; dodge invulnerability is expressed through HitResolver (DODGING → DODGED), not through `can_be_hurt`. HitResolver.resolve() adds two checks before limb routing: target DODGING → return DODGED; target PARRYING → check stance match (if enabled) → return PARRIED. FighterBody.hit() dispatches PARRIED outcomes by calling `parried()` on the attacker, which enters extended RECOVERING. PlayerBrain gains `p0_parry` and `p0_dodge` input bindings.
 
 **Tech Stack:** Godot 4.7 + GDScript. No external test framework. Visual verification is manual F5.
 
@@ -34,13 +34,13 @@ intent_parry() → execute_parry()
 
 The startup window is the commitment cost — you can be hit during it and take damage normally. The active window is when incoming strikes resolve as PARRIED. The recovery is the parry's own vulnerability — a missed parry (whiffed timing) leaves you open. This is the spec's "risk/reward" design: parry grants openings but the parrying fighter is briefly vulnerable during recovery.
 
-**Why not a dedicated PARRYING state?** Adding PARRYING to the state enum would require updating `change_state()`, the animation tree's advance_expressions in the serialized .tscn, and the `_to_combat_state()` mapper. Instead, we use a boolean flag `parry_active` (already exists on FighterBody) checked by `_to_combat_state()`. When `parry_active == true`, `_to_combat_state()` returns `CombatState.PARRYING` regardless of the underlying state. This avoids touching the AnimationTree .tscn while still giving HitResolver the PARRYING combat state it needs.
+**Why not a dedicated PARRYING state?** Adding PARRYING to the state enum would require updating `change_state()`, the animation tree's advance_expressions in the serialized .tscn, and every match on the state enum. Instead, we use the existing `parry_active` boolean flag on FighterBody. The `_on_weapon_body_entered()` call site checks `body.parry_active` and overrides the target's combat state to `CombatState.PARRYING` before calling HitResolver. The static `_to_combat_state()` function is not modified — PARRYING detection lives exclusively at the call site. This avoids touching the AnimationTree .tscn while still giving HitResolver the PARRYING combat state it needs.
 
-### 3. Dodge uses sim-clock timing with a declared duration
+### 3. Dodge uses sim-clock timing with resolver-based defense
 
-The souls template's `dodge()` uses `animation_measured` to time i-frames. Phase 5 replaces this with a declared `dodge_duration` constant (matching the strike timing pattern). The dodge direction is opponent-relative when strafing (backward = away from opponent) and camera-relative when in free movement, using the existing `_calc_cam_direction()` helper.
+The souls template's `dodge()` uses `animation_measured` to time i-frames via `can_be_hurt = false`. Phase 5 replaces this with a declared `dodge_duration` constant (matching the strike timing pattern) and **resolver-based invulnerability**: HitResolver checks for DODGING before limb routing and returns DODGED, so the dodge never needs to set `can_be_hurt = false`. The `can_be_hurt` flag stays `true` during dodge — it is reserved for hurt-stagger invulnerability only. The dodge direction is opponent-relative when strafing (backward = away from opponent) and camera-relative when in free movement, using the existing `_calc_cam_direction()` helper.
 
-Dodge i-frames cover the entire animation per spec: "Dodge has i-frames throughout its animation. A successful dodge does not create a counter-stagger — it grants positional advantage only."
+Per spec: "Dodge has i-frames throughout its animation. A successful dodge does not create a counter-stagger — it grants positional advantage only."
 
 ### 4. HitResolver checks DODGED before PARRIED before limb routing
 
@@ -73,9 +73,9 @@ The spec says: "MVP ships with `false`; we flip it to `true` when stances are vi
 
 These are short — dodge is meant to be fast and reactive, granting positional advantage. The entire dodge (startup + duration + recovery) is ~0.6s.
 
-### 8. PlayerBrain input: parry on `p0_parry`, dodge on `p0_dodge`
+### 8. PlayerBrain input: parry on F, dodge on Space
 
-Two new input actions added to `project.godot`. Parry is a rising-edge press. Dodge is a rising-edge press with direction from current input_dir.
+Two new input actions added to `project.godot`: `p0_parry` on F (keycode 70) and `p0_dodge` on Space (keycode 32). Parry is a rising-edge press. Dodge is a rising-edge press with direction from current input_dir.
 
 ---
 
@@ -210,9 +210,11 @@ func _stance_to_hit_line() -> int:
 			return Strike.HitLine.MID
 ```
 
-- [ ] **Step 3: Update `_to_combat_state()` to return PARRYING when parry_active**
+- [ ] **Step 3: Clean up `_to_combat_state()` — remove stale Phase 5 comment**
 
-The current mapper has a comment `# Phase 5: add PARRYING mapping when parry state exists`. Replace the wildcard `_` catch-all:
+The function is static and correctly maps state enum values to `HitResolver.CombatState`. PARRYING detection does **not** live here — it is handled by the `parry_active` check at the call site in `_on_weapon_body_entered()` (Step 5), which overrides the `target_combat` value before passing it to HitResolver.
+
+The only change is removing the stale comment `# Phase 5: add PARRYING mapping when parry state exists` from the wildcard catch-all, since Phase 5 now handles this via the call-site override:
 
 ```gdscript
 static func _to_combat_state(fighter_state: int) -> int:
@@ -232,8 +234,6 @@ static func _to_combat_state(fighter_state: int) -> int:
 		_:
 			return HitResolver.CombatState.IDLE
 ```
-
-This is a static function and can't read `parry_active`. Instead, the call site in `_on_weapon_body_entered()` will override the combat state when `parry_active` is true. See Step 5.
 
 - [ ] **Step 4: Implement `execute_parry()`**
 
@@ -329,10 +329,9 @@ func _on_weapon_body_entered(body: Node3D) -> void:
 				body.hit(self, outcome)
 			_arm_weapon(false)
 		"DODGED":
-			# Attacker keeps their recovery; no effect on target.
-			# Weapon stays armed — the dodge avoids the hit, but the
-			# strike continues its arc (could hit a third body in theory).
-			pass
+			# Attacker keeps their normal recovery; no punish window.
+			# Disarm to prevent double-hit if dodger re-enters the hitbox.
+			_arm_weapon(false)
 		"MISS":
 			pass
 ```
@@ -342,7 +341,7 @@ Note: this replaces the current `_on_weapon_body_entered()` method entirely. The
 - Added `target_stance_match` and `target_hit_line` extraction
 - Expanded the outcome handling from a simple `if outcome["type"] == "HIT"` to a match statement
 - PARRIED dispatches to `body.hit(self, outcome)` so the target can call `attacker.parried()`
-- DODGED does nothing (attacker keeps their arc)
+- DODGED disarms the weapon (prevents double-hit) but attacker recovers normally (no punish window)
 
 - [ ] **Step 6: Wire `intent_parry()`**
 
@@ -400,7 +399,7 @@ The existing `reset_for_round()` already sets `parry_active = false`. Verify thi
 
 ### Overview
 
-Replace the soul-template's `dodge()` with a sim-clock authoritative `execute_dodge()`. Wire `intent_dodge()` to call it. Dodge has i-frames throughout its active duration. Direction is opponent-relative when strafing, camera-relative otherwise.
+Replace the soul-template's `dodge()` with a sim-clock authoritative `execute_dodge()`. Wire `intent_dodge()` to call it. Dodge invulnerability is resolver-based (DODGING → DODGED), not `can_be_hurt`-based. Direction is opponent-relative when strafing, camera-relative otherwise.
 
 - [ ] **Step 1: Implement `execute_dodge()`**
 
@@ -408,11 +407,14 @@ Add a new coroutine. This replaces the souls template's `dodge()` method — the
 
 ```gdscript
 func execute_dodge(dir: Vector2) -> void:
+	dodge_timer.stop()  # Cancel any stale souls-template dodge timer
 	var round_at_start := _round_id
 
 	# --- Dodge startup (tiny, committed) ---
+	# Invulnerability is resolver-based: _to_combat_state() returns DODGING
+	# for state.DODGE, and HitResolver returns DODGED before limb routing.
+	# can_be_hurt stays true — we do NOT use it for dodge defense.
 	current_state = state.DODGE
-	can_be_hurt = false  # i-frames throughout
 	dodge_started.emit()
 
 	# Compute dodge direction
@@ -436,25 +438,21 @@ func execute_dodge(dir: Vector2) -> void:
 
 	await get_tree().create_timer(dodge_startup).timeout
 	if _round_id != round_at_start:
-		can_be_hurt = true
 		return
 
-	# --- Active dodge (i-frames, movement) ---
+	# --- Active dodge (movement) ---
 	await get_tree().create_timer(dodge_active_time).timeout
 	if _round_id != round_at_start:
-		can_be_hurt = true
 		return
 
-	# --- Dodge recovery (slow down, still invulnerable per spec) ---
+	# --- Dodge recovery (slow down) ---
 	direction = Vector3.ZERO
 	speed = default_speed
 
 	await get_tree().create_timer(dodge_recovery_time).timeout
 	if _round_id != round_at_start:
-		can_be_hurt = true
 		return
 
-	can_be_hurt = true
 	if current_state == state.DODGE:
 		dodge_ended.emit()
 		current_state = state.FREE
@@ -473,19 +471,6 @@ func intent_dodge(_dir: Vector2) -> void:
 	execute_dodge(_dir)
 ```
 
-- [ ] **Step 3: Disable the old dodge_timer-based flow**
-
-The old `dodge()` method uses `dodge_timer.start(anim_length * 0.7)` and `_on_dodge_timer_timeout()` to end the dodge. The new `execute_dodge()` uses sim-clock timers and manages its own state transitions. The old `dodge()` is no longer called by anything, but `_on_dodge_timer_timeout()` could still fire if a stale timer is running from a prior code path.
-
-Add a safety check: in `execute_dodge()`, stop the old dodge_timer at entry:
-
-```gdscript
-func execute_dodge(dir: Vector2) -> void:
-	dodge_timer.stop()  # Cancel any stale souls-template dodge timer
-	var round_at_start := _round_id
-	# ... rest unchanged
-```
-
 ---
 
 ## Task 4: Add parry and dodge input actions + PlayerBrain wiring
@@ -496,17 +481,17 @@ func execute_dodge(dir: Vector2) -> void:
 
 - [ ] **Step 1: Add `p0_parry` and `p0_dodge` input actions to `project.godot`**
 
-Add two new input action entries in the `[input]` section. Use `Q` for parry and `E` for dodge (temporary key bindings — these are easy to rebind later):
+Add two new input action entries in the `[input]` section. Use `F` for parry (keycode 70) and `Space` for dodge (keycode 32). These don't conflict with any existing bindings (Q = stance_upper, Shift = sprint, LMB = strike, WASD = movement):
 
 ```ini
 p0_parry={
 "deadzone": 0.5,
-"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":81,"key_label":0,"unicode":113,"location":0,"echo":false,"script":null)
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":70,"key_label":0,"unicode":102,"location":0,"echo":false,"script":null)
 ]
 }
 p0_dodge={
 "deadzone": 0.5,
-"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":69,"key_label":0,"unicode":101,"location":0,"echo":false,"script":null)
+"events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":0,"physical_keycode":32,"key_label":0,"unicode":32,"location":0,"echo":false,"script":null)
 ]
 }
 ```
@@ -652,11 +637,11 @@ No code changes expected. If either value is wrong, update the `.tres` file.
 
 Manual verification checklist (F5 → play):
 
-1. **Parry a strike**: Press parry (Q) just before the dummy's strike lands → the dummy enters extended RECOVERING (~1.0s). The player recovers from parry quickly and can land a free strike during the punish window.
-2. **Parry too early**: Press parry (Q) well before the strike → parry active window expires → the strike lands normally (HIT, not PARRIED). The player takes damage.
-3. **Parry too late**: Press parry (Q) after the strike has already landed → the player takes damage, then enters a parry that whiffs.
-4. **Dodge a strike**: Press dodge (E) when a strike is incoming → i-frames prevent the hit → DODGED outcome. The player rolls away and recovers at a distance. No punish window — the attacker recovers normally.
-5. **Dodge with direction**: Hold a movement direction + press dodge → the fighter dodges in that direction. No input → dodge backward (away from opponent).
+1. **Parry a strike**: Press parry (F) just before the dummy's strike lands → the dummy enters extended RECOVERING (~1.0s). The player recovers from parry quickly and can land a free strike during the punish window.
+2. **Parry too early**: Press parry (F) well before the strike → parry active window expires → the strike lands normally (HIT, not PARRIED). The player takes damage.
+3. **Parry too late**: Press parry (F) after the strike has already landed → the player takes damage, then enters a parry that whiffs.
+4. **Dodge a strike**: Press dodge (Space) when a strike is incoming → resolver returns DODGED → no damage. The player rolls away and recovers at a distance. No punish window — the attacker recovers normally.
+5. **Dodge with direction**: Hold a movement direction + press dodge (Space) → the fighter dodges in that direction. No input → dodge backward (away from opponent).
 6. **Leg cripple blocks dodge**: Cripple a leg (temporary test data) → dodge input is ignored.
 7. **Round reset**: After a death, parry_active resets to false, can_be_hurt resets to true.
 8. **stance_match_required = false (default)**: Any stance can parry any strike in the active window.
@@ -672,17 +657,17 @@ Manual verification checklist (F5 → play):
 
 The spec's state machine lists PARRYING as a leaf state. The implementation uses `parry_active` boolean + `STATIC_ACTION` state. `_to_combat_state()` is overridden at the call site to return `CombatState.PARRYING` when `parry_active == true`. This avoids touching the serialized AnimationTree .tscn advance_expressions while giving HitResolver the correct combat state.
 
-### 2. Dodge i-frames extend through recovery
+### 2. Dodge invulnerability is resolver-based, not can_be_hurt-based
 
-The spec says "i-frames throughout its animation." The implementation keeps `can_be_hurt = false` through startup + active + recovery (the entire dodge duration). This is slightly generous — the recovery phase could arguably be vulnerable. For MVP, full i-frames match the spec's wording and feel better. If playtesting reveals dodge is too safe, the recovery phase can be made vulnerable by moving `can_be_hurt = true` earlier.
+The spec says "i-frames throughout its animation." The implementation expresses dodge invulnerability through HitResolver's DODGING check (returns DODGED before limb routing), not through `can_be_hurt = false`. `can_be_hurt` stays `true` during dodge. This means the dodge defense covers the entire `state.DODGE` duration (startup + active + recovery). If playtesting reveals dodge is too safe during recovery, the recovery phase can be split into a separate state that maps to `CombatState.IDLE` instead of `DODGING`.
 
 ### 3. Parry animation uses the existing Parry oneshot
 
 The souls template has a Parry oneshot in the AnimationTree that's connected to `parry_started`. Phase 5 emits `parry_started` from `execute_parry()`, which triggers `_on_parry_started()` in the animation tree, which calls `request_oneshot("Parry")`. This reuses the existing animation. No new animation is needed.
 
-### 4. DODGED outcome is a no-op in weapon_body_entered
+### 4. DODGED disarms the weapon but grants no punish window
 
-When HitResolver returns DODGED, the attacking fighter does nothing special — the weapon stays armed and the strike continues its normal arc. This matches the spec: "A successful dodge does not create a counter-stagger — it grants positional advantage only." The attacker finishes their strike normally (STRIKING → RECOVERING at normal duration).
+When HitResolver returns DODGED, the attacking fighter's weapon is disarmed (preventing double-hit if the dodger re-enters the hitbox) but the attacker continues their normal strike arc (STRIKING → RECOVERING at normal duration). This matches the spec: "A successful dodge does not create a counter-stagger — it grants positional advantage only."
 
 ### 5. Block is not implemented
 
