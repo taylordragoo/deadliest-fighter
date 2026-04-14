@@ -87,6 +87,7 @@ signal hurt_started
 signal damage_taken
 signal death_started
 var is_dead: bool = false
+var frozen: bool = false
 
 var limb_health: LimbHealth = LimbHealth.new()
 signal limb_state_changed(limb: String, new_state: int)
@@ -261,10 +262,14 @@ func change_state(new_state: int) -> void:
 
 ## Continuous: the brain's desired movement vector this frame.
 func intent_move(dir: Vector2) -> void:
+	if frozen:
+		return
 	input_dir = dir
 
 ## Continuous: sprint held/released. Holding breaks lock.
 func intent_sprint(held: bool) -> void:
+	if frozen:
+		return
 	if held:
 		if limb_health.has_leg_cripple():
 			return
@@ -277,6 +282,8 @@ func intent_sprint(held: bool) -> void:
 
 ## Rising-edge: request a stance change.
 func intent_change_stance(stance: int) -> void:
+	if frozen:
+		return
 	if limb_health.has_weapon_arm_cripple():
 		return
 	if current_state in [state.WINDING_UP, state.STRIKING, state.RECOVERING]:
@@ -295,6 +302,8 @@ func intent_change_stance(stance: int) -> void:
 ## Phase 3: dir is always SLASH_HORIZONTAL. The parameter exists so the
 ## contract is stable when directional strikes arrive later.
 func intent_strike(stance: int = -1, dir: int = Strike.StrikeDir.SLASH_HORIZONTAL) -> void:
+	if frozen:
+		return
 	# Accept strike from FREE or SPRINT. Sprinting auto-breaks lock
 	# and forces re-lock per spec § Movement sub-model.
 	if current_state == state.SPRINT:
@@ -312,12 +321,16 @@ func intent_strike(stance: int = -1, dir: int = Strike.StrikeDir.SLASH_HORIZONTA
 
 ## Rising-edge: request a parry. (Phase 5)
 func intent_parry() -> void:
+	if frozen:
+		return
 	if current_state != state.FREE:
 		return
 	execute_parry()
 
 ## Rising-edge: request a dodge. (Phase 5)
 func intent_dodge(_dir: Vector2) -> void:
+	if frozen:
+		return
 	if limb_health.has_leg_cripple():
 		return
 	if current_state != state.FREE:
@@ -328,11 +341,26 @@ func intent_dodge(_dir: Vector2) -> void:
 func intent_sheathe(_sheathed: bool) -> void:
 	pass
 
+func freeze() -> void:
+	frozen = true
+	input_dir = Vector2.ZERO
+	velocity = Vector3.ZERO
+	direction = Vector3.ZERO
+
+func unfreeze() -> void:
+	frozen = false
+
 # =========================================================================
 # Physics loop
 # =========================================================================
 
 func _physics_process(_delta: float) -> void:
+	if frozen:
+		apply_gravity(_delta)
+		fall_check()
+		move_and_slide()
+		return
+
 	match current_state:
 		state.FREE:
 			if opponent:
@@ -945,6 +973,7 @@ func reset_for_round(spawn_transform: Transform3D) -> void:
 	velocity = Vector3.ZERO
 	direction = Vector3.ZERO
 	is_dead = false
+	frozen = false
 	can_be_hurt = true
 	guarding = false
 	parry_active = false
