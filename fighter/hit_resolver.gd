@@ -1,11 +1,12 @@
 # fighter/hit_resolver.gd
 # HitResolver — pure static function: strike context → HitOutcome.
-# Phase 3: returns MISS or HIT(torso, lethal=true). No limb routing,
-# no parry/dodge checking. Phase 4–5 expand the logic.
+# Phase 4: routes hits to limbs via DamageProfile.hit_region_priority.
+# Determines lethality by limb identity + current integrity.
+# Phase 5 will add PARRIED/DODGED outcomes.
 #
 # Returns a Dictionary (tagged union):
 #   { "type": "MISS" }
-#   { "type": "HIT", "limb": "torso", "lethal": true }
+#   { "type": "HIT", "limb": "arm_r", "lethal": false, "new_integrity": 2 }
 #
 # Pure: reads inputs only, mutates nothing. Testable without engine.
 # Decoupled: uses its own CombatState enum, NOT FighterBody.state.
@@ -29,11 +30,13 @@ enum CombatState {
 ## attacker_combat_state / target_combat_state: CombatState enum values.
 ## strike: the Strike resource being used.
 ## target_can_be_hurt: whether the target is currently vulnerable.
+## target_limb_health: optional LimbHealth to read current limb integrity.
 static func resolve(
 	strike: Strike,
 	attacker_combat_state: int,
 	target_combat_state: int,
-	target_can_be_hurt: bool
+	target_can_be_hurt: bool,
+	target_limb_health: LimbHealth = null
 ) -> Dictionary:
 	# Attacker must be in STRIKING state
 	if attacker_combat_state != CombatState.STRIKING:
@@ -46,9 +49,72 @@ static func resolve(
 	# Phase 5 will add: if target_combat_state == DODGING → DODGED
 	# Phase 5 will add: if target_combat_state == PARRYING → PARRIED check
 
-	# Phase 3: any valid contact = torso hit, always lethal
-	return {
-		"type": "HIT",
-		"limb": "torso",
-		"lethal": strike.damage_profile.lethal_on_torso
-	}
+	var dp := strike.damage_profile
+	if dp == null:
+		return { "type": "MISS" }
+
+	var target_limb: String = "torso"
+	if dp.hit_region_priority.size() > 0:
+		target_limb = dp.hit_region_priority[0]
+
+	var limb_integrity: int = LimbHealth.Integrity.OK
+	if target_limb_health != null:
+		limb_integrity = target_limb_health.get_integrity(target_limb)
+
+	return _resolve_limb_hit(target_limb, limb_integrity, dp)
+
+
+static func _resolve_limb_hit(limb: String, integrity: int, dp: DamageProfile) -> Dictionary:
+	match limb:
+		"head":
+			return {
+				"type": "HIT",
+				"limb": "head",
+				"lethal": dp.lethal_on_head,
+				"new_integrity": LimbHealth.Integrity.OK,
+			}
+		"torso":
+			if integrity == LimbHealth.Integrity.OK:
+				return {
+					"type": "HIT",
+					"limb": "torso",
+					"lethal": false,
+					"new_integrity": LimbHealth.Integrity.WOUNDED,
+				}
+			else:
+				return {
+					"type": "HIT",
+					"limb": "torso",
+					"lethal": dp.lethal_on_torso,
+					"new_integrity": LimbHealth.Integrity.WOUNDED,
+				}
+		"arm_r", "arm_l":
+			if not dp.limb_cripple:
+				return {
+					"type": "HIT",
+					"limb": limb,
+					"lethal": false,
+					"new_integrity": integrity,
+				}
+			return {
+				"type": "HIT",
+				"limb": limb,
+				"lethal": false,
+				"new_integrity": LimbHealth.Integrity.CRIPPLED,
+			}
+		"leg_r", "leg_l":
+			if not dp.limb_cripple:
+				return {
+					"type": "HIT",
+					"limb": limb,
+					"lethal": false,
+					"new_integrity": integrity,
+				}
+			return {
+				"type": "HIT",
+				"limb": limb,
+				"lethal": false,
+				"new_integrity": LimbHealth.Integrity.CRIPPLED,
+			}
+		_:
+			return { "type": "MISS" }
