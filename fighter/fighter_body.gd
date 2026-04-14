@@ -62,6 +62,22 @@ signal strike_ended(strike: Strike)
 @onready var can_be_hurt: bool = true
 @onready var parry_active: bool = false
 var parry_window: float = 0.3
+
+# --- Parry timing (Phase 5, sim-clock authoritative) ---
+@export var parry_startup: float = 0.1
+@export var parry_active_time: float = 0.3
+@export var parry_recovery: float = 0.15
+## Extended recovery imposed on the attacker when their strike is parried.
+@export var parried_recover_time: float = 1.0
+## When true, parry only succeeds if the parrying fighter's stance matches
+## the incoming strike's hit_line. MVP ships false (timing-only parry).
+@export var stance_match_required: bool = false
+
+# --- Dodge timing (Phase 5, sim-clock authoritative) ---
+@export var dodge_startup: float = 0.05
+@export var dodge_active_time: float = 0.4
+@export var dodge_recovery_time: float = 0.15
+
 signal parry_started
 signal block_started
 
@@ -297,7 +313,9 @@ func intent_strike(stance: int = -1, dir: int = Strike.StrikeDir.SLASH_HORIZONTA
 
 ## Rising-edge: request a parry. (Phase 5)
 func intent_parry() -> void:
-	pass
+	if current_state != state.FREE:
+		return
+	execute_parry()
 
 ## Rising-edge: request a dodge. (Phase 5)
 func intent_dodge(_dir: Vector2) -> void:
@@ -500,6 +518,38 @@ func execute_strike(stance: int, dir: int) -> void:
 		current_state = state.FREE
 	current_strike = null
 
+func execute_parry() -> void:
+	var round_at_start := _round_id
+
+	# --- Parry startup (vulnerable, cannot act) ---
+	current_state = state.STATIC_ACTION
+	parry_started.emit()
+
+	await get_tree().create_timer(parry_startup).timeout
+	if _round_id != round_at_start or current_state != state.STATIC_ACTION:
+		return
+
+	# --- Active parry frames ---
+	parry_active = true
+	can_be_hurt = true
+
+	await get_tree().create_timer(parry_active_time).timeout
+	if _round_id != round_at_start:
+		parry_active = false
+		return
+
+	parry_active = false
+
+	# --- Parry recovery (vulnerable, cannot act) ---
+	if current_state != state.STATIC_ACTION:
+		return
+
+	await get_tree().create_timer(parry_recovery).timeout
+	if _round_id != round_at_start:
+		return
+	if current_state == state.STATIC_ACTION:
+		current_state = state.FREE
+
 func _arm_weapon(armed: bool) -> void:
 	if weapon_hitbox:
 		weapon_hitbox.monitoring = armed
@@ -536,33 +586,61 @@ func _on_weapon_body_entered(body: Node3D) -> void:
 	if current_state != state.STRIKING:
 		return
 
-	# Map FighterBody states to HitResolver's decoupled CombatState enum
 	var attacker_combat := _to_combat_state(current_state)
 	var target_combat := HitResolver.CombatState.IDLE
 	var target_can_be_hurt := true
 	var target_limbs: LimbHealth = null
+	var target_stance_match := false
+	var target_hit_line: int = -1
 	if body is FighterBody:
 		target_combat = _to_combat_state(body.current_state)
+		# Override: if the target has parry_active, report PARRYING
+		# regardless of their underlying state enum value.
+		if body.parry_active:
+			target_combat = HitResolver.CombatState.PARRYING
 		target_can_be_hurt = body.can_be_hurt
 		target_limbs = body.limb_health
+		target_stance_match = body.stance_match_required
+		target_hit_line = body._stance_to_hit_line()
 
 	var outcome := HitResolver.resolve(
 		current_strike,
 		attacker_combat,
 		target_combat,
 		target_can_be_hurt,
-		target_limbs
+		target_limbs,
+		target_stance_match,
+		target_hit_line
 	)
 
-	if outcome["type"] == "HIT":
-		if body.has_method("hit"):
-			body.hit(self, outcome)
-		# Disarm after first hit to prevent multi-hit
-		_arm_weapon(false)
+	match outcome["type"]:
+		"HIT":
+			if body.has_method("hit"):
+				body.hit(self, outcome)
+			_arm_weapon(false)
+		"PARRIED":
+			if body.has_method("hit"):
+				body.hit(self, outcome)
+			_arm_weapon(false)
+		"DODGED":
+			_arm_weapon(false)
+		"MISS":
+			pass
 
 ## Map FighterBody's internal state enum to HitResolver.CombatState.
 ## This is the single translation point — HitResolver never imports
 ## FighterBody.state.
+## Map current weapon_type to Strike.HitLine for parry stance matching.
+## SLASH (MIDDLE) → MID, HEAVY (UPPER) → HIGH.
+func _stance_to_hit_line() -> int:
+	match weapon_type:
+		"HEAVY":
+			return Strike.HitLine.HIGH
+		"SLASH":
+			return Strike.HitLine.MID
+		_:
+			return Strike.HitLine.MID
+
 static func _to_combat_state(fighter_state: int) -> int:
 	match fighter_state:
 		state.WINDING_UP:
@@ -577,7 +655,6 @@ static func _to_combat_state(fighter_state: int) -> int:
 			return HitResolver.CombatState.HURT
 		state.DEAD:
 			return HitResolver.CombatState.DEAD
-		# Phase 5: add PARRYING mapping when parry state exists
 		_:
 			return HitResolver.CombatState.IDLE
 
@@ -713,7 +790,10 @@ func hit(_who: Node, _by_what: Variant) -> void:
 			else:
 				hurt()
 		"PARRIED":
-			pass
+			# This fighter successfully parried. Call parried() on the attacker
+			# to impose extended recovery.
+			if _who is FighterBody:
+				_who.parried()
 		"DODGED":
 			pass
 
@@ -761,8 +841,16 @@ func parry() -> void:
 	can_be_hurt = true
 
 func parried() -> void:
-	# Called when this fighter's attack was parried. Phase 5 adds extended recovery.
-	pass
+	_arm_weapon(false)
+	current_strike = null
+	current_state = state.RECOVERING
+
+	var round_at_start := _round_id
+	await get_tree().create_timer(parried_recover_time).timeout
+	if _round_id != round_at_start:
+		return
+	if current_state == state.RECOVERING:
+		current_state = state.FREE
 
 func hurt() -> void:
 	current_state = state.HURT
