@@ -2,12 +2,12 @@
 
 [ext_resource type="PackedScene" uid="uid://cs00ggojtsj6v" path="res://fighter/fighter_body.tscn" id="1_fighter_scene"]
 [ext_resource type="PackedScene" uid="uid://dxw7cledbpiia" path="res://addons/proto-csgs/proto_csg_box_3d.tscn" id="1_pmygn"]
-[ext_resource type="Texture2D" uid="uid://cej3yoosomfd2" path="res://addons/proto-csgs/textures/dark/texture_13.png" id="2_bg1r4"]
+[ext_resource type="Texture2D" uid="uid://c0x0tvmbhaqck" path="res://addons/proto-csgs/textures/orange/texture_13.png" id="2_bg1r4"]
 [ext_resource type="Script" uid="uid://cnmkgtbnmkpf4" path="res://fighter/brains/player_brain.gd" id="2_player_brain_script"]
 [ext_resource type="Script" uid="uid://d3kogl3ut5dw6" path="res://fighter/fighter_cam.gd" id="3_fighter_cam_script"]
 [ext_resource type="Script" uid="uid://hbstfta8ax5r" path="res://fighter/fighter_arena.gd" id="4_fighter_arena_script"]
 [ext_resource type="Script" uid="uid://rgwrjc8u4qui" path="res://fighter/fighter_hud.gd" id="5_fighter_hud_script"]
-[ext_resource type="Script" path="res://fighter/brains/ai_brain.gd" id="6_ai_brain_script"]
+[ext_resource type="Script" uid="uid://d2r1b455eh0vy" path="res://fighter/brains/ai_brain.gd" id="6_ai_brain_script"]
 
 [sub_resource type="Environment" id="Environment_demo"]
 background_mode = 1
@@ -19,7 +19,7 @@ ambient_light_energy = 0.4
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
 size = Vector3(20, 1, 20)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_pmygn"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fofmd"]
 resource_local_to_scene = true
 albedo_texture = ExtResource("2_bg1r4")
 uv1_offset = Vector3(0.5, 0.5, 0.5)
@@ -28,7 +28,7 @@ uv1_triplanar = true
 [node name="FighterDemo" type="Node3D" unique_id=1471554409]
 
 [node name="Sun" type="DirectionalLight3D" parent="." unique_id=765033830]
-transform = Transform3D(1, 0, 0, 0, 0.707107, -0.707107, 0, 0.707107, 0.707107, 0, 5, 0)
+transform = Transform3D(1, 0, 0, 0, 0.49999997, 0.86602545, 0, -0.86602545, 0.49999997, 0, 60, 0)
 
 [node name="WorldEnv" type="WorldEnvironment" parent="." unique_id=2060102804]
 environment = SubResource("Environment_demo")
@@ -42,8 +42,10 @@ shape = SubResource("BoxShape3D_floor")
 
 [node name="ProtoCSGBox3D" parent="Floor" unique_id=742245538 instance=ExtResource("1_pmygn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+gi_mode = 0
 size = Vector3(73, 1, 53)
-material = SubResource("StandardMaterial3D_pmygn")
+material = SubResource("StandardMaterial3D_fofmd")
+block_color = 3
 
 [node name="FighterA" parent="." unique_id=1700691806 instance=ExtResource("1_fighter_scene")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, 0)
@@ -56,7 +58,7 @@ script = ExtResource("2_player_brain_script")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0)
 opponent_path = NodePath("../FighterA")
 
-[node name="AIBrain" type="Node" parent="FighterB"]
+[node name="AIBrain" type="Node" parent="FighterB" unique_id=763930899]
 script = ExtResource("6_ai_brain_script")
 
 [node name="FighterCam" type="Camera3D" parent="." unique_id=1487765376]

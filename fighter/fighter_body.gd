@@ -2,7 +2,7 @@
 # FighterBody — forked from CharacterBodySoulsBase (player/character_body_souls_base.gd).
 # Stripped of: ladders, inventory, items, gadgets, interactables, direct input handling.
 # All input comes through the brain's intent_* methods.
-# Movement rewritten: strafing is opponent-relative (Phase 1 math), sprint is camera-relative.
+# Movement rewritten: all input is camera-relative; strafing faces opponent while moving in camera space.
 extends CharacterBody3D
 class_name FighterBody
 
@@ -17,8 +17,6 @@ const STANCE_TO_WEAPON: Dictionary = {
 @export var anim_state_tree: FighterAnimationTree
 @onready var anim_length: float = 0.5
 
-# --- Camera (sprint/freelook movement only — strafing is opponent-relative) ---
-var _cached_cam: Camera3D
 
 # --- Opponent reference ---
 @export var opponent_path: NodePath
@@ -131,6 +129,7 @@ signal sprint_started
 
 # --- Movement ---
 var input_dir: Vector2
+var use_camera: Camera3D
 @export var default_speed: float = 4.0
 @export var walk_speed: float = 1.0
 @onready var speed: float = default_speed
@@ -263,6 +262,8 @@ func change_state(new_state: int) -> void:
 ## Continuous: the brain's desired movement vector this frame.
 func intent_move(dir: Vector2) -> void:
 	if frozen:
+		return
+	if current_state == state.DODGE:
 		return
 	input_dir = dir
 
@@ -402,29 +403,35 @@ func _physics_process(_delta: float) -> void:
 	fall_check()
 
 # =========================================================================
-# Movement — Opponent-relative strafing (ported from Phase 1's fighter.gd)
+# Movement — Camera-relative strafing (faces opponent, moves in camera space)
 # =========================================================================
 
 func _strafing_movement() -> void:
-	var desired := _compute_strafe_velocity() * speed
+	var cam_dir := _calc_cam_direction()
 	var rate: float = 0.5 if is_on_floor() else 0.1
-	velocity.x = move_toward(velocity.x, desired.x, rate)
-	velocity.z = move_toward(velocity.z, desired.z, rate)
-	# Update strafe blend values for the animation tree
-	strafe_cross_product = input_dir.x
-	move_dot_product = -input_dir.y
+	if cam_dir.length_squared() > 0.0001:
+		var desired := cam_dir.normalized() * speed
+		velocity.x = move_toward(velocity.x, desired.x, rate)
+		velocity.z = move_toward(velocity.z, desired.z, rate)
+	else:
+		velocity.x = move_toward(velocity.x, 0, rate)
+		velocity.z = move_toward(velocity.z, 0, rate)
+	# Project camera-relative input onto opponent axes for animation blend
+	if cam_dir.length_squared() > 0.0001 and opponent:
+		var to_opp := opponent.global_position - global_position
+		to_opp.y = 0.0
+		if to_opp.length_squared() > 0.0001:
+			var fwd := to_opp.normalized()
+			var rgt := fwd.cross(Vector3.UP).normalized()
+			strafe_cross_product = cam_dir.dot(rgt)
+			move_dot_product = cam_dir.dot(fwd)
+		else:
+			strafe_cross_product = 0.0
+			move_dot_product = 0.0
+	else:
+		strafe_cross_product = 0.0
+		move_dot_product = 0.0
 	move_and_slide()
-
-func _compute_strafe_velocity() -> Vector3:
-	if opponent == null:
-		return Vector3.ZERO
-	var to_opp := opponent.global_position - global_position
-	to_opp.y = 0.0
-	if to_opp.length_squared() < 0.0001:
-		return Vector3.ZERO
-	var forward := to_opp.normalized()
-	var right := forward.cross(Vector3.UP).normalized()
-	return forward * (-input_dir.y) + right * input_dir.x
 
 func _face_opponent(weight: float) -> void:
 	if opponent == null:
@@ -478,15 +485,23 @@ func _freelook_rotate() -> void:
 		global_transform.basis = Basis(target_rotation)
 
 func _calc_cam_direction() -> Vector3:
-	var cam := _cached_cam
+	var cam := use_camera
 	if cam == null or not is_instance_valid(cam):
-		cam = get_viewport().get_camera_3d()
-		_cached_cam = cam
-	if cam == null:
-		return Vector3(input_dir.x, 0.0, input_dir.y)
+		return _calc_opponent_relative_direction()
 	var forward_vector := Vector3(0, 0, 1).rotated(Vector3.UP, cam.global_rotation.y)
 	var horizontal_vector := Vector3(1, 0, 0).rotated(Vector3.UP, cam.global_rotation.y)
 	return forward_vector * input_dir.y + horizontal_vector * input_dir.x
+
+func _calc_opponent_relative_direction() -> Vector3:
+	if opponent == null:
+		return Vector3(input_dir.x, 0.0, -input_dir.y)
+	var to_opp := opponent.global_position - global_position
+	to_opp.y = 0.0
+	if to_opp.length_squared() < 0.0001:
+		return Vector3.ZERO
+	var forward := to_opp.normalized()
+	var right := forward.cross(Vector3.UP).normalized()
+	return forward * (-input_dir.y) + right * input_dir.x
 
 # =========================================================================
 # Strike system (Phase 3 — sim-clock authoritative timing)
@@ -585,30 +600,30 @@ func execute_parry() -> void:
 func execute_dodge(dir: Vector2) -> void:
 	dodge_timer.stop()  # Cancel any stale souls-template dodge timer
 	var round_at_start := _round_id
-	var was_strafing := strafing
+
+	# Compute dodge direction (always camera-relative)
+	if dir.length_squared() > 0.01:
+		direction = _calc_cam_direction().normalized()
+	else:
+		# No input: dodge backward (away from opponent if strafing)
+		if opponent:
+			var away := global_position - opponent.global_position
+			away.y = 0.0
+			direction = away.normalized() if away.length_squared() > 0.0001 else -global_transform.basis.z
+		else:
+			direction = -global_transform.basis.z
+
+	# Ensure input_dir is nonzero so the DODGE_tree picks the Roll animation
+	# (its advance_expression branches on fighter_node.input_dir).
+	if input_dir.length_squared() < 0.01:
+		input_dir = Vector2(direction.x, -direction.z).normalized()
 
 	# --- Dodge startup (tiny, committed) ---
 	current_state = state.DODGE
 	dodge_started.emit()
-
-	# Compute dodge direction
-	if dir.length_squared() > 0.01:
-		if opponent and was_strafing:
-			# Opponent-relative: dir.y negative = toward opponent, positive = away
-			var to_opp := (opponent.global_position - global_position).normalized()
-			to_opp.y = 0.0
-			var right := to_opp.cross(Vector3.UP).normalized()
-			direction = (to_opp * (-dir.y) + right * dir.x).normalized()
-		else:
-			direction = _calc_cam_direction().normalized()
-	else:
-		# No input: dodge backward (away from opponent if strafing)
-		if opponent:
-			direction = (global_position - opponent.global_position).normalized()
-			direction.y = 0.0
-		else:
-			direction = -global_transform.basis.z
 	speed = dodge_speed
+	velocity.x = direction.x * dodge_speed
+	velocity.z = direction.z * dodge_speed
 
 	await get_tree().create_timer(dodge_startup).timeout
 	if _round_id != round_at_start:
@@ -628,6 +643,7 @@ func execute_dodge(dir: Vector2) -> void:
 		return
 
 	if current_state == state.DODGE:
+		input_dir = Vector2.ZERO
 		dodge_ended.emit()
 		current_state = state.FREE
 

@@ -131,8 +131,6 @@ func set_strafe() -> void:
 	var new_blend := Vector2(fighter_node.strafe_cross_product, fighter_node.move_dot_product)
 	if fighter_node.current_state == fighter_node.state.DYNAMIC_ACTION:
 		new_blend *= 0.25
-	else:
-		new_blend *= Vector2(abs(fighter_node.input_dir.x), abs(fighter_node.input_dir.y))
 	lerp_movement = Vector2(get("parameters/MovementStates/" + weapon_type + "_tree/MoveStrafe/blend_position"))
 	lerp_movement = lerp(lerp_movement, new_blend, 0.2)
 	set("parameters/MovementStates/" + weapon_type + "_tree/MoveStrafe/blend_position", lerp_movement)

@@ -30,10 +30,16 @@ func _ready() -> void:
 	_strike       = StringName(p + "strike")
 	_parry        = StringName(p + "parry")
 	_dodge        = StringName(p + "dodge")
+	_refresh_camera()
+
+func _refresh_camera() -> void:
+	if fighter:
+		fighter.use_camera = get_viewport().get_camera_3d()
 
 func _physics_process(_delta: float) -> void:
 	if fighter == null:
 		return
+	_refresh_camera()
 
 	# Movement (continuous)
 	var move := Input.get_vector(_move_left, _move_right, _move_up, _move_down)
