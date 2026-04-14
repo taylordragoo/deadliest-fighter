@@ -32,6 +32,16 @@ var _retreat_timer: float = 0.0
 var _strike_pending: bool = false
 var _strike_delay: float = 0.0
 
+func _ready() -> void:
+	super._ready()
+	if fighter:
+		fighter.limb_state_changed.connect(_on_own_limb_changed)
+
+func _on_own_limb_changed(limb: String, new_state: int) -> void:
+	if new_state == LimbHealth.Integrity.CRIPPLED:
+		_retreating = true
+		_retreat_timer = retreat_duration
+
 func set_opponent(opp: FighterBody) -> void:
 	opponent = opp
 	if opponent:
