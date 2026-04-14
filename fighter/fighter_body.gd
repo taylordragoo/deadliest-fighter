@@ -348,10 +348,9 @@ func _physics_process(_delta: float) -> void:
 
 		state.DODGE:
 			dash_movement()
-			if opponent:
-				_face_opponent(0.25)
-			else:
-				_freelook_rotate()
+			if direction.length_squared() > 0.01:
+				var target_yaw := atan2(direction.x, direction.z)
+				rotation.y = lerp_angle(rotation.y, target_yaw, 0.25)
 
 		state.WINDING_UP:
 			if opponent:
