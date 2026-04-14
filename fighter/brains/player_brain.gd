@@ -15,6 +15,8 @@ var _move_right: StringName
 var _sprint: StringName
 var _stance_upper: StringName
 var _strike: StringName
+var _parry: StringName
+var _dodge: StringName
 
 func _ready() -> void:
 	super._ready()
@@ -26,6 +28,8 @@ func _ready() -> void:
 	_sprint       = StringName(p + "sprint")
 	_stance_upper = StringName(p + "stance_upper")
 	_strike       = StringName(p + "strike")
+	_parry        = StringName(p + "parry")
+	_dodge        = StringName(p + "dodge")
 
 func _physics_process(_delta: float) -> void:
 	if fighter == null:
@@ -52,3 +56,11 @@ func _physics_process(_delta: float) -> void:
 		if current_stance == null:
 			current_stance = FighterBody.Stance.MIDDLE
 		fighter.intent_strike(current_stance, Strike.StrikeDir.SLASH_HORIZONTAL)
+
+	# Parry (rising edge)
+	if Input.is_action_just_pressed(_parry):
+		fighter.intent_parry()
+
+	# Dodge (rising edge, with direction from current movement input)
+	if Input.is_action_just_pressed(_dodge):
+		fighter.intent_dodge(move)
