@@ -1,10 +1,13 @@
-[gd_scene load_steps=10 format=3 uid="uid://cj4pl4lt8s575"]
+[gd_scene format=3 uid="uid://cj4pl4lt8s575"]
 
-[ext_resource type="PackedScene" uid="uid://cfighterbody2ph2" path="res://fighter/fighter_body.tscn" id="1_fighter_scene"]
-[ext_resource type="Script" path="res://fighter/brains/player_brain.gd" id="2_player_brain_script"]
-[ext_resource type="Script" path="res://fighter/fighter_cam.gd" id="3_fighter_cam_script"]
-[ext_resource type="Script" path="res://fighter/fighter_arena.gd" id="4_fighter_arena_script"]
-[ext_resource type="Script" path="res://fighter/fighter_hud.gd" id="5_fighter_hud_script"]
+[ext_resource type="PackedScene" uid="uid://cs00ggojtsj6v" path="res://fighter/fighter_body.tscn" id="1_fighter_scene"]
+[ext_resource type="PackedScene" uid="uid://dxw7cledbpiia" path="res://addons/proto-csgs/proto_csg_box_3d.tscn" id="1_pmygn"]
+[ext_resource type="Texture2D" uid="uid://cej3yoosomfd2" path="res://addons/proto-csgs/textures/dark/texture_13.png" id="2_bg1r4"]
+[ext_resource type="Script" uid="uid://cnmkgtbnmkpf4" path="res://fighter/brains/player_brain.gd" id="2_player_brain_script"]
+[ext_resource type="Script" uid="uid://d3kogl3ut5dw6" path="res://fighter/fighter_cam.gd" id="3_fighter_cam_script"]
+[ext_resource type="Script" uid="uid://hbstfta8ax5r" path="res://fighter/fighter_arena.gd" id="4_fighter_arena_script"]
+[ext_resource type="Script" uid="uid://rgwrjc8u4qui" path="res://fighter/fighter_hud.gd" id="5_fighter_hud_script"]
+[ext_resource type="Script" path="res://fighter/brains/ai_brain.gd" id="6_ai_brain_script"]
 
 [sub_resource type="Environment" id="Environment_demo"]
 background_mode = 1
@@ -16,56 +19,63 @@ ambient_light_energy = 0.4
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
 size = Vector3(20, 1, 20)
 
-[sub_resource type="BoxMesh" id="BoxMesh_floor"]
-size = Vector3(20, 1, 20)
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_pmygn"]
+resource_local_to_scene = true
+albedo_texture = ExtResource("2_bg1r4")
+uv1_offset = Vector3(0.5, 0.5, 0.5)
+uv1_triplanar = true
 
-[node name="FighterDemo" type="Node3D"]
+[node name="FighterDemo" type="Node3D" unique_id=1471554409]
 
-[node name="Sun" type="DirectionalLight3D" parent="."]
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=765033830]
 transform = Transform3D(1, 0, 0, 0, 0.707107, -0.707107, 0, 0.707107, 0.707107, 0, 5, 0)
 
-[node name="WorldEnv" type="WorldEnvironment" parent="."]
+[node name="WorldEnv" type="WorldEnvironment" parent="." unique_id=2060102804]
 environment = SubResource("Environment_demo")
 
-[node name="Floor" type="StaticBody3D" parent="."]
-collision_layer = 1
+[node name="Floor" type="StaticBody3D" parent="." unique_id=817833369]
 collision_mask = 0
 
-[node name="FloorCollision" type="CollisionShape3D" parent="Floor"]
+[node name="FloorCollision" type="CollisionShape3D" parent="Floor" unique_id=402691981]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 shape = SubResource("BoxShape3D_floor")
 
-[node name="FloorMesh" type="MeshInstance3D" parent="Floor"]
+[node name="ProtoCSGBox3D" parent="Floor" unique_id=742245538 instance=ExtResource("1_pmygn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
-mesh = SubResource("BoxMesh_floor")
+size = Vector3(73, 1, 53)
+material = SubResource("StandardMaterial3D_pmygn")
 
-[node name="FighterA" parent="." instance=ExtResource("1_fighter_scene")]
+[node name="FighterA" parent="." unique_id=1700691806 instance=ExtResource("1_fighter_scene")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, 0)
 opponent_path = NodePath("../FighterB")
 
-[node name="FighterB" parent="." instance=ExtResource("1_fighter_scene")]
+[node name="PlayerBrain" type="Node" parent="FighterA" unique_id=1979592489]
+script = ExtResource("2_player_brain_script")
+
+[node name="FighterB" parent="." unique_id=856844209 instance=ExtResource("1_fighter_scene")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0)
 opponent_path = NodePath("../FighterA")
 
-[node name="FighterCam" type="Camera3D" parent="."]
-script = ExtResource("3_fighter_cam_script")
+[node name="AIBrain" type="Node" parent="FighterB"]
+script = ExtResource("6_ai_brain_script")
+
+[node name="FighterCam" type="Camera3D" parent="." unique_id=1487765376]
 current = true
+script = ExtResource("3_fighter_cam_script")
 fighter_a_path = NodePath("../FighterA")
 fighter_b_path = NodePath("../FighterB")
 
-[node name="PlayerBrain" type="Node" parent="FighterA"]
-script = ExtResource("2_player_brain_script")
-
-[node name="FighterArena" type="Node3D" parent="."]
+[node name="FighterArena" type="Node3D" parent="." unique_id=1172967754]
 script = ExtResource("4_fighter_arena_script")
 fighter_a_path = NodePath("../FighterA")
 fighter_b_path = NodePath("../FighterB")
 
-[node name="HUDLayer" type="CanvasLayer" parent="."]
+[node name="HUDLayer" type="CanvasLayer" parent="." unique_id=783771751]
 
-[node name="FighterHUD" type="Control" parent="HUDLayer"]
+[node name="FighterHUD" type="Control" parent="HUDLayer" unique_id=328782475]
 layout_mode = 3
 anchors_preset = 0
 script = ExtResource("5_fighter_hud_script")
 fighter_a_path = NodePath("../../FighterA")
 fighter_b_path = NodePath("../../FighterB")
+arena_path = NodePath("../../FighterArena")
